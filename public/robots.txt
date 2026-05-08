@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /create
+Disallow: /review/
+Disallow: /schedule
+Disallow: /analytics
+Disallow: /library
+Disallow: /settings
+Disallow: /onboarding
+Disallow: /auth
+Disallow: /api/
+
+Sitemap: https://virlo.ai/sitemap.xml
