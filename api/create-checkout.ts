@@ -15,7 +15,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!authHeader) return res.status(401).json({ error: 'No auth token' })
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-    apiVersion: '2023-10-16',
+    apiVersion: '2026-04-22.dahlia' as const,
   })
 
   const supabase = createClient(
@@ -44,7 +44,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .eq('user_id', userId)
       .single()
 
-    let customerId = (sub as any)?.stripe_customer_id
+    let customerId: string | null = null
+    if (sub) customerId = sub.stripe_customer_id
 
     if (!customerId) {
       const customer = await stripe.customers.create({
