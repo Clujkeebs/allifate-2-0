@@ -91,6 +91,8 @@ export function CreatePage() {
       video_length: videoLength,
       pipeline_stage: 'Initializing',
       pipeline_progress: 0,
+      voice_id: selectedVoice,
+      niche: selectedNiche,
       image_style: (sourceMode === 'ai_gen' || sourceMode === 'stock') ? imageStyle : null,
       image_aspect_ratio: (sourceMode === 'ai_gen' || sourceMode === 'stock') ? imageAspectRatio : null,
     }).select().single()

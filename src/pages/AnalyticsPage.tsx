@@ -107,10 +107,10 @@ export function AnalyticsPage() {
 
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
-        <StatCard label="Total Views" value={totals.views > 0 ? totals.views.toLocaleString() : '—'} icon={<Eye size={16} />} color="#00B4D8" />
-        <StatCard label="Total Likes" value={totals.likes > 0 ? totals.likes.toLocaleString() : '—'} icon={<Heart size={16} />} color="#e1306c" />
-        <StatCard label="Total Shares" value={totals.shares > 0 ? totals.shares.toLocaleString() : '—'} icon={<Share2 size={16} />} color="#1d9bf0" />
-        <StatCard label="Total Saves" value={totals.saves > 0 ? totals.saves.toLocaleString() : '—'} icon={<Bookmark size={16} />} color="#FFB547" />
+        <StatCard label="VIRAL REACH" value={totals.views > 0 ? totals.views.toLocaleString() : '0'} icon={<Eye size={16} />} color="#00B4D8" />
+        <StatCard label="ESTIMATED ROI" value={totals.views > 0 ? '$' + (totals.views * 0.002).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00'} icon={<TrendingUp size={16} />} color="#00E5A0" />
+        <StatCard label="ENGAGEMENTS" value={totals.likes + totals.shares + totals.saves > 0 ? (totals.likes + totals.shares + totals.saves).toLocaleString() : '0'} icon={<Heart size={16} />} color="#e1306c" />
+        <StatCard label="TOTAL SAVES" value={totals.saves > 0 ? totals.saves.toLocaleString() : '0'} icon={<Bookmark size={16} />} color="#FFB547" />
       </div>
 
       {/* Charts */}
@@ -189,11 +189,12 @@ export function AnalyticsPage() {
             return best
           })()
           const PLATFORM_NAMES: Record<string, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', twitter: 'X/Twitter', linkedin: 'LinkedIn', facebook: 'Facebook', pinterest: 'Pinterest', snapchat: 'Snapchat' }
+          const estimatedValue = (totals.views * 0.002).toFixed(2)
           const insights = [
+            <span key="rev">Based on average CPM, your automated content has generated an estimated <strong style={{ color: '#00E5A0' }}>${estimatedValue}</strong> in media value.</span>,
             engagementRate !== '0.0' ? <span key="er">Your overall engagement rate is <strong style={{ color: '#F0F4F8' }}>{engagementRate}%</strong>.{Number(engagementRate) > 5 ? ' This is above industry average — keep it up!' : ' Try increasing hook strength and CTA clarity.'}</span> : null,
             topPlatform.likes > 0 ? <span key="tp"><strong style={{ color: '#F0F4F8' }}>{PLATFORM_NAMES[topPlatform.platform] || topPlatform.platform}</strong> drives the most engagement with <strong style={{ color: '#F0F4F8' }}>{topPlatform.likes.toLocaleString()}</strong> total likes.</span> : null,
             pieces.length > 0 ? <span key="pc">You&apos;ve posted <strong style={{ color: '#F0F4F8' }}>{pieces.length}</strong> pieces of content. {pieces.length < 5 ? 'Consistency is key — aim for daily posting.' : 'Great cadence! Consider experimenting with new formats.'}</span> : null,
-            totals.saves > 0 ? <span key="sv">Users have saved your content <strong style={{ color: '#F0F4F8' }}>{totals.saves.toLocaleString()}</strong> times — saves signal high value content.</span> : null,
           ].filter(Boolean)
           return insights.length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>

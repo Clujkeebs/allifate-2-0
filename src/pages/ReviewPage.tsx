@@ -331,6 +331,19 @@ export function ReviewPage() {
                     {['Make hook punchier', 'Change music', 'Trim to 30s', 'Add CTA', 'Retone for professional'].map(action => (
                       <button
                         key={action}
+                        disabled={scheduling}
+                        onClick={async () => {
+                          setLoading(true)
+                          // Simulate an AI edit request
+                          setTimeout(async () => {
+                            const newCaption = `${caption}\n\n[Edited for: ${action}]`
+                            setCaption(newCaption)
+                            await db.from('content_pieces').update({ caption: newCaption }).eq('id', selectedPiece.id)
+                            setPieces(prev => prev.map(p => p.id === selectedPiece.id ? { ...p, caption: newCaption } : p))
+                            setSelectedPiece(prev => prev ? { ...prev, caption: newCaption } : null)
+                            setLoading(false)
+                          }, 1500)
+                        }}
                         className="btn-secondary"
                         style={{ fontSize: 12, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6 }}
                       >

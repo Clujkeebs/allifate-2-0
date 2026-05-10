@@ -45,12 +45,12 @@ export function Logo({ size = 'md', showTagline = false }: LogoProps) {
           lineHeight: 1,
           letterSpacing: '-0.02em',
         }}>
-          Vir<span style={{
+          Social<span style={{
             background: 'linear-gradient(135deg, #00E5A0, #00B4D8)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
-          }}>lo</span>
+          }}>Mind</span>
         </div>
         {showTagline && (
           <div style={{
@@ -61,7 +61,7 @@ export function Logo({ size = 'md', showTagline = false }: LogoProps) {
             textTransform: 'uppercase',
             marginTop: 2,
           }}>
-            AI Content Engine
+            Faceless Automation
           </div>
         )}
       </div>
