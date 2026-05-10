@@ -61,7 +61,7 @@ export function AuthPage({ mode: initialMode = 'login' }: { mode?: Mode }) {
             {mode === 'login' ? 'Welcome back' : 'Start creating'}
           </h1>
           <p style={{ color: '#8B9EB0', fontSize: 14, margin: 0 }}>
-            {mode === 'login' ? 'Sign in to your SocialMind account' : 'Create your free account — no credit card required'}
+            {mode === 'login' ? 'Sign in to your Virlo account' : 'Create your free account — no credit card required'}
           </p>
         </div>
 

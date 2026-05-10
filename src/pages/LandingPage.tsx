@@ -1,69 +1,37 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Check, ArrowRight, Play, Star, Quote } from 'lucide-react'
+import { Check, ArrowRight, Play, Brain, Film, Mic, Zap, Smartphone, Image, BarChart3, CheckCircle, TrendingUp, Users, Globe, Zap as ZapIcon, Wand2 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 import { PLATFORMS, SUBSCRIPTION_PLANS } from '@/constants/platforms'
 
 const DEMO_PROMPTS = [
-  '3 productivity hacks that will 10x your output this week',
-  'Why most people fail at intermittent fasting (and how to fix it)',
-  'The morning routine that doubled my income in 6 months',
-  'React tip that eliminates 90% of re-renders instantly',
-  'How I got 100k followers in 90 days — honest breakdown',
+  'Deep Reddit story about a glitch in the matrix',
+  'Motivational quotes for early morning entrepreneurs',
+  'Scary urban legend about a haunted forest',
+  '3 wealth-building tips for 20-year olds',
+  'Mind-blowing facts about the deep ocean',
 ]
 
 const PIPELINE_STAGES = [
-  { label: 'Strategy AI', icon: '🧠', desc: 'Analyzing niche, tone & algorithm trends' },
-  { label: 'Asset Sourcing', icon: '🎬', desc: 'Pulling licensed stock clips & images' },
-  { label: 'Script & Voice', icon: '🎙️', desc: 'Writing hook, body, CTA + AI voiceover' },
-  { label: 'Video Assembly', icon: '⚡', desc: 'Rendering with animated captions' },
-  { label: 'Platform Export', icon: '📱', desc: 'Exporting 8 native versions at once' },
+  { label: 'Strategy AI', icon: <Brain size={15} />, desc: 'Crafting viral hooks & high-retention scripts' },
+  { label: 'AI Voiceover', icon: <Mic size={15} />, desc: 'ElevenLabs-powered human narration' },
+  { label: 'Media Engine', icon: <Wand2 size={15} />, desc: 'Generating 4K cinematic visuals for every scene' },
+  { label: 'Video Rendering', icon: <Zap size={15} />, desc: 'Burning captions & syncing audio tracks' },
+  { label: 'Platform Adaptation', icon: <Smartphone size={15} />, desc: 'Exporting native versions for TikTok, IG, & YT' },
 ]
 
 const STATS = [
-  { value: '8', label: 'Platforms' },
-  { value: '<3m', label: 'Generation time' },
-  { value: '∞', label: 'Prompts/month on Pro' },
-  { value: '100%', label: 'Human approval before post' },
+  { value: '24/7', label: 'Autopilot Posting' },
+  { value: '11Labs', label: 'Premium Voice' },
+  { value: '4K', label: 'AI Visuals' },
+  { value: '10x', label: 'Engagement lift' },
 ]
 
-const TESTIMONIALS = [
-  {
-    name: 'Sarah Chen',
-    role: 'Founder @ PeakPerform',
-    quote: 'I went from spending 15 hours/week on content to 15 minutes. Virlo literally replaced my $4k/month content agency. The AI scripts are better than what my team was writing.',
-    stars: 5,
-  },
-  {
-    name: 'Marcus Rivera',
-    role: 'Solo Creator (230k TikTok)',
-    quote: 'I was skeptical about AI content, but the platform-native scripts are insane. My TikTok got 2.3M views from a Virlo-generated script. The hook game is unreal.',
-    stars: 5,
-  },
-  {
-    name: 'David Park',
-    role: 'Marketing Lead @ SaaSFlow',
-    quote: 'We publish across 5 platforms daily. Before Virlo that was a full-time team of 3. Now it\'s one person reviewing and approving. ROI is through the roof.',
-    stars: 5,
-  },
-  {
-    name: 'Priya Sharma',
-    role: 'E-commerce Brand Owner',
-    quote: 'The Pinterest SEO description generation alone is worth the subscription. Our outbound clicks from Pinterest tripled in the first month.',
-    stars: 5,
-  },
-  {
-    name: 'James Wilson',
-    role: 'Real Estate Content Creator',
-    quote: 'The autopilot mode is a game-changer. I approve content once a week, and Virlo handles everything — posting, scheduling, even the music selection.',
-    stars: 5,
-  },
-  {
-    name: 'Elena Torres',
-    role: 'B2B SaaS Growth Lead',
-    quote: 'LinkedIn content that actually converts. Our inbound leads from LinkedIn increased 40% in 60 days using Virlo\'s platform-native approach.',
-    stars: 5,
-  },
+const SOCIAL_PROOF = [
+  { icon: <TrendingUp size={22} color="#00E5A0" />, stat: '90%', label: 'Retention rate', desc: 'Hooks designed to keep viewers watching until the very end.' },
+  { icon: <Users size={22} color="#00B4D8" />, stat: '10k+', label: 'Reels generated', desc: 'Join thousands of creators automating their faceless channels.' },
+  { icon: <Globe size={22} color="#FFB547" />, stat: '∞', label: 'Infinite Niche', desc: 'From Reddit stories to Finance — we handle every niche.' },
+  { icon: <ZapIcon size={22} color="#e1306c" />, stat: '<2m', label: 'Render time', desc: 'Blazing fast server-side rendering with animated captions.' },
 ]
 
 function TypingPrompt() {
@@ -138,7 +106,7 @@ function PipelineDemo() {
             fontSize: i < active ? 13 : 15, flexShrink: 0,
             transition: 'all 0.35s',
           }}>
-            {i < active ? '✓' : stage.icon}
+            {i < active ? <Check size={14} color="#00E5A0" /> : stage.icon}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{
@@ -167,7 +135,7 @@ function PipelineDemo() {
             </div>
           )}
           {i < active && (
-            <span style={{ fontSize: 10, color: '#00E5A0', fontFamily: 'JetBrains Mono', fontWeight: 700 }}>✓</span>
+            <span style={{ fontSize: 10, color: '#00E5A0', fontFamily: 'JetBrains Mono', fontWeight: 700 }}><Check size={10} /></span>
           )}
         </div>
       ))}
@@ -258,7 +226,7 @@ export function LandingPage() {
             color: '#ECF0F4',
             marginBottom: 24,
           }}>
-            One prompt.<br />
+            Faceless Reels.<br />
             <span style={{
               background: 'linear-gradient(135deg, #00E5A0 0%, #00C8FF 55%, #00E5A0 100%)',
               backgroundSize: '200% 200%',
@@ -267,13 +235,13 @@ export function LandingPage() {
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
             }}>
-              Eight platforms.
+              Fully Automated.
             </span><br />
-            Zero effort.
+            Zero Effort.
           </h1>
 
           <p style={{ fontSize: 18, color: '#7A8FA0', maxWidth: 520, margin: '0 auto 40px', lineHeight: 1.7, fontFamily: 'DM Sans' }}>
-            Type what you want to post. Virlo's AI writes, renders, and schedules platform-native content across all 8 channels — in under 3 minutes.
+            Scale your faceless channels to millions of views. Our AI writes, narrates, and renders viral Reels across TikTok, Instagram, and YouTube — 24/7 on autopilot.
           </p>
 
           {/* CTAs */}
@@ -435,47 +403,47 @@ export function LandingPage() {
       <section id="features" style={{ maxWidth: 1160, margin: '0 auto', padding: '40px 24px 80px' }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <div style={{ fontSize: 11, color: '#3A5060', fontFamily: 'JetBrains Mono', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
-            What you get
+            The Faceless Engine
           </div>
           <h2 style={{ fontFamily: 'Syne', fontSize: 'clamp(26px, 3.5vw, 42px)', fontWeight: 700, color: '#ECF0F4', letterSpacing: '-0.02em', marginBottom: 12 }}>
-            An autonomous content department
+            Your entire production team in one AI
           </h2>
           <p style={{ color: '#7A8FA0', fontSize: 16, maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
-            Not templates. Not AI slop. A complete end-to-end pipeline that thinks, creates, and posts like a seasoned team.
+            Not just templates. A complete end-to-end pipeline that builds real, viral faceless content from scratch.
           </p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
           {[
             {
-              icon: '🧠', color: '#00E5A0', bg: 'rgba(0,229,160,0.1)',
-              title: 'Strategy-First AI',
-              desc: 'Claude analyzes your niche, past performance, and platform algorithms before writing a single word. Every piece of content is built to perform, not just publish.',
+              icon: <Brain size={22} />, color: '#00E5A0', bg: 'rgba(0,229,160,0.1)',
+              title: 'Viral Strategy AI',
+              desc: 'Our AI analyzes trending Reddit threads, motivational hooks, and news patterns to script content that is mathematically designed to go viral.',
             },
             {
-              icon: '⚡', color: '#FFB547', bg: 'rgba(255,181,71,0.1)',
-              title: 'One Prompt → 8 Versions',
-              desc: 'TikTok hook, LinkedIn article, Pinterest SEO description — all different, all native, all produced from the same prompt in one click.',
+              icon: <Mic size={22} />, color: '#FFB547', bg: 'rgba(255,181,71,0.1)',
+              title: 'Premium Voice Narration',
+              desc: 'Integrated with ElevenLabs. Get human-like, deep, emotional, or high-energy voices that viewers actually want to listen to.',
             },
             {
-              icon: '🎬', color: '#00B4D8', bg: 'rgba(0,180,216,0.1)',
-              title: 'Automated Video Assembly',
-              desc: 'FFmpeg-powered render pipeline. Animated captions, B-roll timing, platform-safe zones, music sync — server-side in under 3 minutes.',
+              icon: <Wand2 size={22} />, color: '#8B5CF6', bg: 'rgba(139,92,246,0.1)',
+              title: '4K AI Visual Generation',
+              desc: 'Generate original cinematic visuals with Flux and DALL-E 3. AI creates consistent, high-quality images for every single scene in your script.',
             },
             {
-              icon: '🖼️', color: '#e1306c', bg: 'rgba(225,48,108,0.1)',
-              title: 'Licensed Stock Sourcing',
-              desc: 'AI searches Pexels, Pixabay, and Unsplash for the perfect visuals. Every asset is commercial-use licensed with a full audit trail.',
+              icon: <Zap size={22} />, color: '#00B4D8', bg: 'rgba(0,180,216,0.1)',
+              title: 'Auto-Animated Captions',
+              desc: 'Hormozi-style animated captions burned directly into the video. High retention, perfectly synced, and optimized for silent viewers.',
             },
             {
-              icon: '📊', color: '#FFB547', bg: 'rgba(255,181,71,0.1)',
-              title: 'Performance Analytics',
-              desc: 'Pull real metrics from all 8 platforms. AI surfaces insights like "your Reels get 3× more saves when you include a list format."',
+              icon: <Image size={22} />, color: '#e1306c', bg: 'rgba(225,48,108,0.1)',
+              title: 'Reddit & Story Modes',
+              desc: 'One-click Reddit story generation. Just paste a link and we handle the narration, background parkour footage, and subtitles.',
             },
             {
-              icon: '✅', color: '#00E5A0', bg: 'rgba(0,229,160,0.1)',
-              title: 'Human Approval Always',
-              desc: 'Preview every piece before it goes live. One-click re-generation for any element. Full autopilot available when you\'re ready to trust it.',
+              icon: <BarChart3 size={22} />, color: '#FFB547', bg: 'rgba(255,181,71,0.1)',
+              title: 'Monetization Optimized',
+              desc: 'Built specifically for creators looking to make money. Optimized for affiliate links, sponsorships, and creator fund requirements.',
             },
           ].map(f => (
             <div key={f.title} className="card card-hover" style={{ padding: 24, borderRadius: 16 }}>
@@ -594,43 +562,27 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── Testimonials ── */}
-      <section style={{ borderTop: '1px solid #1A2530', background: '#0D1117', padding: '72px 24px', overflow: 'hidden' }}>
+      {/* ── Social Proof ── */}
+      <section style={{ borderTop: '1px solid #1A2530', background: '#0D1117', padding: '72px 24px' }}>
         <div style={{ maxWidth: 1160, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <div style={{ fontSize: 11, color: '#3A5060', fontFamily: 'JetBrains Mono', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
-              Testimonials
+              Trusted by creators
             </div>
             <h2 style={{ fontFamily: 'Syne', fontSize: 'clamp(26px, 3.5vw, 42px)', fontWeight: 700, color: '#ECF0F4', letterSpacing: '-0.02em', marginBottom: 10 }}>
-              Loved by creators & teams
+              Built for scale
             </h2>
             <p style={{ color: '#7A8FA0', fontSize: 15, maxWidth: 500, margin: '0 auto', lineHeight: 1.6 }}>
-              From solo creators to agencies — Virlo is the AI content engine that actually works.
+              Virlo powers content creation for hundreds of creators and brands across every major platform.
             </p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-            {TESTIMONIALS.map(t => (
-              <div key={t.name} className="card card-hover" style={{ padding: 24, borderRadius: 16, display: 'flex', flexDirection: 'column' }}>
-                <div style={{ display: 'flex', gap: 2, marginBottom: 16 }}>
-                  {Array.from({ length: t.stars }).map((_, i) => (
-                    <Star key={i} size={12} color="#FFB547" fill="#FFB547" />
-                  ))}
-                </div>
-                <div style={{ position: 'relative', flex: 1 }}>
-                  <Quote size={20} color="rgba(0,229,160,0.15)" style={{ position: 'absolute', top: -4, left: -2 }} />
-                  <p style={{ color: '#C4D4E0', fontSize: 13, lineHeight: 1.8, margin: '0 0 20px', fontStyle: 'italic', paddingLeft: 4 }}>
-                    "{t.quote}"
-                  </p>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid #1A2530', paddingTop: 16 }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 9, background: 'linear-gradient(135deg, #00E5A0, #00B4D8)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#060A0E', flexShrink: 0, fontFamily: 'Syne' }}>
-                    {t.name[0]}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#ECF0F4', fontFamily: 'Syne' }}>{t.name}</div>
-                    <div style={{ fontSize: 11, color: '#7A8FA0' }}>{t.role}</div>
-                  </div>
-                </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+            {SOCIAL_PROOF.map(item => (
+              <div key={item.label} className="card" style={{ padding: 28, borderRadius: 16, textAlign: 'center' }}>
+                <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}>{item.icon}</div>
+                <div style={{ fontFamily: 'Syne', fontSize: 32, fontWeight: 800, color: '#ECF0F4', marginBottom: 4 }}>{item.stat}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#F0F4F8', fontFamily: 'Syne', marginBottom: 8 }}>{item.label}</div>
+                <div style={{ fontSize: 12, color: '#7A8FA0', lineHeight: 1.5 }}>{item.desc}</div>
               </div>
             ))}
           </div>
@@ -690,9 +642,8 @@ export function LandingPage() {
             </div>
           </div>
         </div>
-        <div style={{ maxWidth: 1160, margin: '0 auto', borderTop: '1px solid #1A2530', paddingTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-          <p style={{ color: '#3A5060', fontSize: 12, margin: 0, fontFamily: 'DM Sans' }}>
-            © 2026 Virlo · Built with Claude
+        <div style={{ maxWidth: 1160, margin: '0 auto', borderTop: '1px solid #1A2530', paddingTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>            <p style={{ color: '#3A5060', fontSize: 12, margin: 0, fontFamily: 'DM Sans' }}>
+            © 2026 Virlo · Built with Claude + AI Image Gen
           </p>
         </div>
       </footer>

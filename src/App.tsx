@@ -18,6 +18,7 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(m => ({ defa
 const UpgradePage = lazy(() => import('@/pages/UpgradePage').then(m => ({ default: m.UpgradePage })))
 const PrivacyPage = lazy(() => import('@/pages/PrivacyPage').then(m => ({ default: m.PrivacyPage })))
 const TermsPage = lazy(() => import('@/pages/TermsPage').then(m => ({ default: m.TermsPage })))
+const OAuthCallbackPage = lazy(() => import('@/pages/OAuthCallbackPage').then(m => ({ default: m.OAuthCallbackPage })))
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, loading, initialized } = useAuth()
@@ -67,6 +68,9 @@ function AppInner() {
         <Route path="/settings" element={<Suspense fallback={<div/>}><SettingsPage /></Suspense>} />
         <Route path="/upgrade" element={<Suspense fallback={<div/>}><UpgradePage /></Suspense>} />
       </Route>
+
+      {/* OAuth callback */}
+      <Route path="/oauth/callback" element={<RequireAuth><Suspense fallback={<div/>}><OAuthCallbackPage /></Suspense></RequireAuth>} />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />

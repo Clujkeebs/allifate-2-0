@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Check, ChevronRight, Loader2 } from 'lucide-react'
+import { Check, ChevronRight, Loader2, Rocket } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 import { PLATFORMS, NICHES, TONES } from '@/constants/platforms'
 import { db } from '@/lib/supabase'
@@ -154,10 +154,10 @@ export function OnboardingPage() {
 
         {step === 3 && (
           <div className="animate-slide-up" style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 56, marginBottom: 16 }}>🚀</div>
+            <Rocket size={48} color="#00E5A0" style={{ marginBottom: 16 }} />
             <h2 style={{ fontFamily: 'Syne', fontSize: 24, fontWeight: 700, color: '#F0F4F8', marginBottom: 12 }}>You're all set!</h2>
             <p style={{ color: '#8B9EB0', fontSize: 15, marginBottom: 24, lineHeight: 1.6 }}>
-              Your AI content engine is ready. Type a prompt and watch SocialMind turn it into polished, platform-native content in under 3 minutes.
+              Your AI content engine is ready. Type a prompt and watch Virlo turn it into polished, platform-native content in under 3 minutes.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               {selectedPlatforms.map(id => (

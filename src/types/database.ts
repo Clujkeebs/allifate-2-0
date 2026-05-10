@@ -32,6 +32,10 @@ export interface PlatformConnection {
   expires_at: string | null
   is_active: boolean
   created_at: string
+  /** Zerio connection ID — null for direct OAuth connections */
+  zerio_connection_id: string | null
+  /** Connection provider: 'zerio' or 'direct' (per-platform OAuth) */
+  provider: 'zerio' | 'direct'
 }
 
 export interface ContentJob {
@@ -45,11 +49,15 @@ export interface ContentJob {
   created_at: string
   completed_at: string | null
   error_message: string | null
-  source_mode: 'upload' | 'stock' | 'screen'
+  source_mode: 'upload' | 'stock' | 'ai_gen' | 'screen'
   tone: string | null
   music_mood: string | null
   video_length: number | null
   caption_style: string | null
+  /** AI image generation style preset */
+  image_style: string | null
+  /** AI image generation aspect ratio */
+  image_aspect_ratio: string | null
 }
 
 export interface ContentPiece {
@@ -92,6 +100,8 @@ export interface ScheduledPost {
   status: PostStatus
   platform_post_id: string | null
   error_message: string | null
+  /** Zerio post ID — for webhook event correlation */
+  zerio_post_id: string | null
 }
 
 export interface PostAnalytics {
@@ -162,6 +172,8 @@ export interface Database {
           account_avatar?: string | null
           expires_at?: string | null
           is_active?: boolean
+          zerio_connection_id?: string | null
+          provider?: 'zerio' | 'direct'
         }
         Update: {
           is_active?: boolean
@@ -170,6 +182,8 @@ export interface Database {
           expires_at?: string | null
           account_name?: string
           account_avatar?: string | null
+          zerio_connection_id?: string | null
+          provider?: 'zerio' | 'direct'
         }
       }
       content_jobs: {
@@ -182,13 +196,15 @@ export interface Database {
           platforms?: Platform[]
           pipeline_stage?: string | null
           pipeline_progress?: number
-          source_mode?: 'upload' | 'stock' | 'screen'
+          source_mode?: 'upload' | 'stock' | 'ai_gen' | 'screen'
           tone?: string | null
           music_mood?: string | null
           video_length?: number | null
           caption_style?: string | null
           error_message?: string | null
           completed_at?: string | null
+          image_style?: string | null
+          image_aspect_ratio?: string | null
         }
         Update: {
           status?: JobStatus
@@ -196,6 +212,8 @@ export interface Database {
           pipeline_progress?: number
           error_message?: string | null
           completed_at?: string | null
+          image_style?: string | null
+          image_aspect_ratio?: string | null
         }
       }
       content_pieces: {
@@ -257,6 +275,7 @@ export interface Database {
           status?: PostStatus
           platform_post_id?: string | null
           error_message?: string | null
+          zerio_post_id?: string | null
         }
         Update: {
           scheduled_for?: string
@@ -264,6 +283,7 @@ export interface Database {
           posted_at?: string | null
           platform_post_id?: string | null
           error_message?: string | null
+          zerio_post_id?: string | null
         }
       }
       post_analytics: {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, TrendingUp, Eye, Heart, Share2, Clock, CheckCircle, AlertCircle, Loader2, Zap } from 'lucide-react'
+import { Plus, TrendingUp, Eye, Heart, Share2, Clock, CheckCircle, AlertCircle, Loader2, Zap, Sparkles } from 'lucide-react'
 import { db } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { PLATFORM_MAP, PLATFORMS } from '@/constants/platforms'
@@ -77,7 +77,7 @@ export function DashboardPage() {
       {/* Welcome header */}
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontFamily: 'Syne', fontSize: 24, fontWeight: 700, color: '#F0F4F8', marginBottom: 4 }}>
-          {(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })()}{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}. 👋
+          {(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })()}{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}.
         </h1>
         <p style={{ color: '#8B9EB0', fontSize: 14 }}>
           {processingJobs.length > 0 ? `${processingJobs.length} job${processingJobs.length > 1 ? 's' : ''} processing right now.` : "What do you want to create today?"}
@@ -87,9 +87,9 @@ export function DashboardPage() {
       {/* Quick create CTA if no jobs */}
       {jobs.length === 0 && !loading && (
         <div style={{ background: 'linear-gradient(135deg, rgba(0,229,160,0.08), rgba(0,180,216,0.04))', border: '1px solid rgba(0,229,160,0.2)', borderRadius: 16, padding: 32, textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>✨</div>
+          <Sparkles size={36} color="#00E5A0" style={{ marginBottom: 12 }} />
           <h2 style={{ fontFamily: 'Syne', fontSize: 20, fontWeight: 700, color: '#F0F4F8', marginBottom: 8 }}>Create your first piece of content</h2>
-          <p style={{ color: '#8B9EB0', fontSize: 14, marginBottom: 20 }}>Type a prompt and watch SocialMind produce professional content for all your platforms.</p>
+          <p style={{ color: '#8B9EB0', fontSize: 14, marginBottom: 20 }}>Type a prompt and watch Virlo produce professional content for all your platforms.</p>
           <button onClick={() => navigate('/create')} className="btn-primary" style={{ fontSize: 14 }}>
             <Plus size={16} /> New Content
           </button>
@@ -208,6 +208,9 @@ export function DashboardPage() {
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 16 }}>{p.icon}</span>
                     <span style={{ flex: 1, fontSize: 13, color: '#F0F4F8' }}>{p.name}</span>
+                    {conn?.provider === 'zerio' && (
+                      <span style={{ fontSize: 8, color: '#00B4D8', fontFamily: 'JetBrains Mono', background: 'rgba(0,180,216,0.12)', padding: '1px 5px', borderRadius: 6 }}>ZERIO</span>
+                    )}
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: conn?.is_active ? '#00E5A0' : '#FF4757' }} />
                   </div>
                 )

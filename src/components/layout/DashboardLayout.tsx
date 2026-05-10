@@ -37,7 +37,7 @@ export function DashboardLayout() {
   const location = useLocation()
   const [showUserMenu, setShowUserMenu] = useState(false)
 
-  const pageTitle = PAGE_TITLES[location.pathname] || 'SocialMind'
+  const pageTitle = PAGE_TITLES[location.pathname] || 'Virlo'
   const usagePct = subscription?.posts_limit === -1
     ? 8
     : Math.min(100, ((subscription?.posts_used_this_month || 0) / (subscription?.posts_limit || 20)) * 100)
