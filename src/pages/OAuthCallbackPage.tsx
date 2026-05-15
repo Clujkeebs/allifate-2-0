@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, X, Loader2, Link2 } from 'lucide-react'
 import { db } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import { track, Events } from '@/lib/monitoring'
 import { exchangeCode as exchangeZernioCode, zernioConnectionsToRows } from '@/lib/zernio'
 
 type CallbackState = 'loading' | 'success' | 'error'
@@ -79,6 +80,7 @@ export function OAuthCallbackPage() {
           setPlatform(`${rows.length} platforms`)
           setAccountName(rows.map(r => r.account_name).filter(Boolean).slice(0, 3).join(', '))
           setState('success')
+          track(Events.CONNECT_PLATFORM, { provider: 'zernio', platform_count: rows.length })
 
           timerRef.current = setTimeout(() => navigate('/settings'), 2500)
         } catch (err: unknown) {
@@ -169,6 +171,7 @@ export function OAuthCallbackPage() {
         if (cancelled) return
         setAccountName(result.account_name || result.username || platformParam)
         setState('success')
+        track(Events.CONNECT_PLATFORM, { provider: 'direct', platform: platformParam })
 
         // Redirect back to settings after a short delay
         timerRef.current = setTimeout(() => navigate('/settings'), 2000)

@@ -4,6 +4,7 @@ import { Sparkles, Upload, Search, Monitor, ChevronDown, ChevronUp, Loader2, X }
 import { supabase, db } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { PLATFORMS, TONES } from '@/constants/platforms'
+import { track, Events } from '@/lib/monitoring'
 import type { ContentJob, Platform } from '@/types/database'
 
 const PIPELINE_STAGES = [
@@ -77,6 +78,13 @@ export function CreatePage() {
     setActiveJobId(job.id)
     setActiveJobStatus(job.status)
     setPipelineStage(0)
+
+    track(Events.GENERATE_CONTENT, {
+      platforms: selectedPlatforms,
+      source_mode: sourceMode,
+      tone,
+      platform_count: selectedPlatforms.length,
+    })
 
     // Fire the generate request in the background — the UI follows the real
     // job state via the realtime subscription below, not a fake timer.

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Check, ChevronLeft, RefreshCw, Calendar, Play, Edit3, Loader2 } from 'lucide-react'
 import { supabase, db } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import { track, Events } from '@/lib/monitoring'
 import { PLATFORM_MAP } from '@/constants/platforms'
 import type { ContentJob, ContentPiece } from '@/types/database'
 
@@ -149,6 +150,12 @@ export function ReviewPage() {
       status: 'scheduled' as const,
     }))
     await db.from('scheduled_posts').insert(rows)
+
+    track(Events.SCHEDULE_POST, {
+      post_count: approvedPieces.length,
+      platforms: [...new Set(approvedPieces.map(p => p.platform))],
+    })
+
     setScheduling(false)
     navigate('/schedule')
   }

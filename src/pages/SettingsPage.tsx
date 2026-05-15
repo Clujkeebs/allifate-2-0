@@ -4,6 +4,7 @@ import { ExternalLink, Loader2, Check, X, Zap, Link2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { db, supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import { track, Events } from '@/lib/monitoring'
 import { PLATFORMS, SUBSCRIPTION_PLANS, NICHES, TONES } from '@/constants/platforms'
 import { isZernioConfigured, getAuthUrl as getZernioAuthUrl, disconnectPlatform as disconnectZernioPlatform } from '@/lib/zernio'
 import type { PlatformConnection, Platform } from '@/types/database'
@@ -124,6 +125,7 @@ export function SettingsPage() {
   async function openBillingPortal() {
     if (!user) return
     setBillingPortalLoading(true)
+    track(Events.OPEN_BILLING_PORTAL)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/api/billing-portal', {

@@ -3,23 +3,157 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+const APP_ORIGIN = Deno.env.get('APP_ORIGIN') ?? 'http://localhost:5173'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+}
+
+function buildAuthorizeUrl(platform: string, redirectUri: string, state: string): string {
+  switch (platform) {
+    case 'tiktok': {
+      const clientKey = Deno.env.get('TIKTOK_CLIENT_KEY') ?? ''
+      if (!clientKey) throw new Error('TikTok OAuth not configured')
+      const params = new URLSearchParams({
+        client_key: clientKey,
+        scope: 'user.info.basic,video.publish,video.upload',
+        response_type: 'code',
+        redirect_uri: redirectUri,
+        state,
+      })
+      return `https://www.tiktok.com/v2/auth/authorize/?${params}`
+    }
+    case 'instagram': {
+      const appId = Deno.env.get('META_APP_ID') ?? ''
+      if (!appId) throw new Error('Instagram OAuth not configured')
+      const params = new URLSearchParams({
+        client_id: appId,
+        redirect_uri: redirectUri,
+        scope: 'instagram_basic,instagram_content_publish,pages_read_engagement',
+        response_type: 'code',
+        state,
+      })
+      return `https://api.instagram.com/oauth/authorize?${params}`
+    }
+    case 'youtube': {
+      const clientId = Deno.env.get('GOOGLE_CLIENT_ID') ?? ''
+      if (!clientId) throw new Error('YouTube OAuth not configured')
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly',
+        response_type: 'code',
+        access_type: 'offline',
+        prompt: 'consent',
+        state,
+      })
+      return `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+    }
+    case 'twitter': {
+      const clientId = Deno.env.get('TWITTER_CLIENT_ID') ?? ''
+      if (!clientId) throw new Error('Twitter OAuth not configured')
+      const params = new URLSearchParams({
+        response_type: 'code',
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        scope: 'tweet.read tweet.write users.read offline.access',
+        state,
+        code_challenge: 'challenge',
+        code_challenge_method: 'plain',
+      })
+      return `https://twitter.com/i/oauth2/authorize?${params}`
+    }
+    case 'linkedin': {
+      const clientId = Deno.env.get('LINKEDIN_CLIENT_ID') ?? ''
+      if (!clientId) throw new Error('LinkedIn OAuth not configured')
+      const params = new URLSearchParams({
+        response_type: 'code',
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        scope: 'r_liteprofile w_member_social',
+        state,
+      })
+      return `https://www.linkedin.com/oauth/v2/authorization?${params}`
+    }
+    case 'facebook': {
+      const appId = Deno.env.get('META_APP_ID') ?? ''
+      if (!appId) throw new Error('Facebook OAuth not configured')
+      const params = new URLSearchParams({
+        client_id: appId,
+        redirect_uri: redirectUri,
+        scope: 'pages_manage_posts,pages_read_engagement,publish_video',
+        response_type: 'code',
+        state,
+      })
+      return `https://www.facebook.com/v18.0/dialog/oauth?${params}`
+    }
+    case 'pinterest': {
+      const appId = Deno.env.get('PINTEREST_APP_ID') ?? ''
+      if (!appId) throw new Error('Pinterest OAuth not configured')
+      const params = new URLSearchParams({
+        client_id: appId,
+        redirect_uri: redirectUri,
+        scope: 'boards:read,pins:read,pins:write',
+        response_type: 'code',
+        state,
+      })
+      return `https://www.pinterest.com/oauth/?${params}`
+    }
+    case 'snapchat': {
+      const clientId = Deno.env.get('SNAPCHAT_CLIENT_ID') ?? ''
+      if (!clientId) throw new Error('Snapchat OAuth not configured')
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        scope: 'snapchat-marketing-api',
+        response_type: 'code',
+        state,
+      })
+      return `https://accounts.snapchat.com/accounts/oauth2/auth?${params}`
+    }
+    default:
+      throw new Error(`Unsupported platform: ${platform}`)
+  }
+}
 
 serve(async (req: Request) => {
-  // CORS
+  const url = new URL(req.url)
+
+  // CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
-    })
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  // GET /oauth-exchange/authorize?platform=X&redirect_uri=Y&state=Z
+  // Returns the platform's authorization URL so the frontend can redirect the user.
+  if (req.method === 'GET' && url.pathname.endsWith('/authorize')) {
+    const platform = url.searchParams.get('platform') ?? ''
+    const redirectUri = url.searchParams.get('redirect_uri') ?? ''
+    const state = url.searchParams.get('state') ?? ''
+    if (!platform || !redirectUri) {
+      return new Response(JSON.stringify({ error: 'Missing platform or redirect_uri' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    try {
+      const authUrl = buildAuthorizeUrl(platform, redirectUri, state)
+      return new Response(JSON.stringify({ url: authUrl }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to build authorize URL'
+      return new Response(JSON.stringify({ error: message }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
   }
 
   if (req.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
@@ -27,56 +161,46 @@ serve(async (req: Request) => {
   const authHeader = req.headers.get('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
     return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
   const token = authHeader.slice(7)
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-  // Verify the JWT and get the user
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) {
     return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
-  // Parse the request body
   let body: { platform?: string; code?: string }
   try {
     body = await req.json()
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
   const { platform, code } = body
   if (!platform || !code) {
     return new Response(JSON.stringify({ error: 'Missing platform or code' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
-  // Exchange the authorization code for an access token
-  // Each platform has its own OAuth token endpoint
   try {
     const result = await exchangeCode(platform, code)
     return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Token exchange failed'
     console.error('OAuth exchange error:', message)
     return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 })
@@ -119,7 +243,7 @@ async function exchangeTikTok(code: string) {
       client_secret: clientSecret,
       code,
       grant_type: 'authorization_code',
-      redirect_uri: `${Deno.env.get('APP_ORIGIN') ?? 'http://localhost:5173'}/oauth/callback?platform=tiktok`,
+      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=tiktok`,
     }),
   })
   const data = await resp.json()
@@ -138,7 +262,7 @@ async function exchangeInstagram(code: string) {
   const appSecret = Deno.env.get('META_APP_SECRET') ?? ''
   if (!appId || !appSecret) throw new Error('Instagram OAuth credentials not configured')
 
-  const redirectUri = `${Deno.env.get('APP_ORIGIN') ?? 'http://localhost:5173'}/oauth/callback?platform=instagram`
+  const redirectUri = `${APP_ORIGIN}/oauth/callback?platform=instagram`
 
   // Step 1: Exchange code for short-lived access token
   const tokenResp = await fetch('https://api.instagram.com/oauth/access_token', {
@@ -190,7 +314,7 @@ async function exchangeGoogle(code: string) {
       client_secret: clientSecret,
       code,
       grant_type: 'authorization_code',
-      redirect_uri: `${Deno.env.get('APP_ORIGIN') ?? 'http://localhost:5173'}/oauth/callback?platform=youtube`,
+      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=youtube`,
     }),
   })
   const data = await resp.json()
@@ -234,7 +358,7 @@ async function exchangeTwitter(code: string) {
     body: new URLSearchParams({
       code,
       grant_type: 'authorization_code',
-      redirect_uri: `${Deno.env.get('APP_ORIGIN') ?? 'http://localhost:5173'}/oauth/callback?platform=twitter`,
+      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=twitter`,
       code_verifier: 'challenge', // Must match the code_challenge sent in the auth request
     }),
   })
@@ -263,7 +387,7 @@ async function exchangeLinkedIn(code: string) {
       client_secret: clientSecret,
       code,
       grant_type: 'authorization_code',
-      redirect_uri: `${Deno.env.get('APP_ORIGIN') ?? 'http://localhost:5173'}/oauth/callback?platform=linkedin`,
+      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=linkedin`,
     }),
   })
   const data = await resp.json()
@@ -290,7 +414,7 @@ async function exchangeFacebook(code: string) {
       client_id: appId,
       client_secret: appSecret,
       code,
-      redirect_uri: `${Deno.env.get('APP_ORIGIN') ?? 'http://localhost:5173'}/oauth/callback?platform=facebook`,
+      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=facebook`,
     }),
   })
   const data = await resp.json()
@@ -329,7 +453,7 @@ async function exchangePinterest(code: string) {
     body: new URLSearchParams({
       code,
       grant_type: 'authorization_code',
-      redirect_uri: `${Deno.env.get('APP_ORIGIN') ?? 'http://localhost:5173'}/oauth/callback?platform=pinterest`,
+      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=pinterest`,
     }),
   })
   const data = await resp.json()
@@ -357,7 +481,7 @@ async function exchangeSnapchat(code: string) {
       client_secret: clientSecret,
       code,
       grant_type: 'authorization_code',
-      redirect_uri: `${Deno.env.get('APP_ORIGIN') ?? 'http://localhost:5173'}/oauth/callback?platform=snapchat`,
+      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=snapchat`,
     }),
   })
   const data = await resp.json()
