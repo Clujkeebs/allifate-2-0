@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, TrendingUp, Eye, Heart, Share2, Clock, CheckCircle, AlertCircle, Loader2, Zap, Sparkles } from 'lucide-react'
+import { Plus, TrendingUp, Eye, Heart, Share2, Clock, CheckCircle, AlertCircle, Loader2, Zap } from 'lucide-react'
 import { db } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { PLATFORM_MAP, PLATFORMS } from '@/constants/platforms'
@@ -35,25 +35,76 @@ function JobStatusBadge({ status }: { status: ContentJob['status'] }) {
   )
 }
 
-const NICHE_ICONS: Record<string, string> = {
-  reddit: '🤖',
-  motivation: '🔥',
-  horror: '👻',
-  finance: '💰',
-  facts: '💡',
-}
-
 export function DashboardPage() {
-...
-      {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
-        <StatCard label="VIRAL REACH" value={totals.views > 0 ? totals.views.toLocaleString() : '0'} change={totals.views > 0 ? '+12% from last week' : undefined} icon={<Eye size={16} />} />
-        <StatCard label="ENGAGEMENT" value={totals.views > 0 ? ((totals.likes + totals.shares + totals.saves) / totals.views * 100).toFixed(1) + '%' : '0%'} icon={<Heart size={16} />} />
-        <StatCard label="APPROVED POSTS" value={String(postedThisMonth)} change={postedThisMonth > 0 ? '+' + postedThisMonth + ' this month' : undefined} icon={<CheckCircle size={16} />} />
-        <StatCard label="CREATION CREDITS" value={String(subscription?.posts_limit === -1 ? '∞' : (subscription?.posts_limit || 0) - (subscription?.posts_used_this_month || 0))} icon={<Zap size={16} />} />
+  const { user, profile, subscription } = useAuth()
+  const navigate = useNavigate()
+  const [jobs, setJobs] = useState<ContentJob[]>([])
+  const [pieces, setPieces] = useState<ContentPiece[]>([])
+  const [connections, setConnections] = useState<PlatformConnection[]>([])
+  const [loading, setLoading] = useState(true)
+  const [analytics, setAnalytics] = useState<PostAnalytics[]>([])
+
+  useEffect(() => {
+    if (!user) return
+    async function load() {
+      const [jobsRes, piecesRes, connRes, analyticsRes] = await Promise.all([
+        db.from('content_jobs').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }).limit(10),
+        db.from('content_pieces').select('*').eq('user_id', user!.id).order('posted_at', { ascending: false }).limit(12),
+        db.from('platform_connections').select('*').eq('user_id', user!.id),
+        // RLS filters by user via content_piece_id → content_pieces.user_id
+        db.from('post_analytics').select('*').order('fetched_at', { ascending: false }),
+      ])
+      setJobs(jobsRes.data || [])
+      setPieces(piecesRes.data || [])
+      setConnections(connRes.data || [])
+      setAnalytics(analyticsRes.data || [])
+      setLoading(false)
+    }
+    load()
+  }, [user])
+
+  const postedThisMonth = pieces.filter(p => p.status === 'posted' && p.posted_at && new Date(p.posted_at) > new Date(new Date().setDate(1))).length
+  const processingJobs = jobs.filter(j => j.status === 'processing' || j.status === 'pending')
+  const totals = analytics.reduce((acc, a) => ({
+    views: acc.views + a.views,
+    likes: acc.likes + a.likes,
+    shares: acc.shares + a.shares,
+    saves: acc.saves + a.saves,
+  }), { views: 0, likes: 0, shares: 0, saves: 0 })
+
+  return (
+    <div style={{ padding: 28, maxWidth: 1200, margin: '0 auto' }}>
+      {/* Welcome header */}
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontFamily: 'Syne', fontSize: 24, fontWeight: 700, color: '#F0F4F8', marginBottom: 4 }}>
+          {(() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })()}{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}. 👋
+        </h1>
+        <p style={{ color: '#8B9EB0', fontSize: 14 }}>
+          {processingJobs.length > 0 ? `${processingJobs.length} job${processingJobs.length > 1 ? 's' : ''} processing right now.` : "What do you want to create today?"}
+        </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24 }}>
+      {/* Quick create CTA if no jobs */}
+      {jobs.length === 0 && !loading && (
+        <div style={{ background: 'linear-gradient(135deg, rgba(0,229,160,0.08), rgba(0,180,216,0.04))', border: '1px solid rgba(0,229,160,0.2)', borderRadius: 16, padding: 32, textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>✨</div>
+          <h2 style={{ fontFamily: 'Syne', fontSize: 20, fontWeight: 700, color: '#F0F4F8', marginBottom: 8 }}>Create your first piece of content</h2>
+          <p style={{ color: '#8B9EB0', fontSize: 14, marginBottom: 20 }}>Type a prompt and watch Virlo produce professional content for all your platforms.</p>
+          <button onClick={() => navigate('/create')} className="btn-primary" style={{ fontSize: 14 }}>
+            <Plus size={16} /> New Content
+          </button>
+        </div>
+      )}
+
+      {/* Stats row */}
+      <div className="dashboard-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
+        <StatCard label="POSTS THIS MONTH" value={String(postedThisMonth)} change={postedThisMonth > 0 ? '+' + postedThisMonth + ' this month' : undefined} icon={<TrendingUp size={16} />} />
+        <StatCard label="TOTAL REACH" value={totals.views > 0 ? totals.views.toLocaleString() : '—'} icon={<Eye size={16} />} />
+        <StatCard label="AVG ENGAGEMENT" value={totals.views > 0 ? ((totals.likes + totals.shares + totals.saves) / totals.views * 100).toFixed(1) + '%' : '—'} icon={<Heart size={16} />} />
+        <StatCard label="CREDITS LEFT" value={String(subscription?.posts_limit === -1 ? '∞' : (subscription?.posts_limit || 0) - (subscription?.posts_used_this_month || 0))} icon={<Zap size={16} />} />
+      </div>
+
+      <div className="dashboard-main-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24 }}>
         {/* Recent jobs + pieces */}
         <div>
           {/* Active jobs */}
@@ -61,14 +112,11 @@ export function DashboardPage() {
             <div style={{ marginBottom: 24 }}>
               <h3 style={{ fontFamily: 'Syne', fontSize: 14, fontWeight: 600, color: '#8B9EB0', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00E5A0', animation: 'pulse-glow 1.5s infinite' }} />
-                AUTOMATION PIPELINE
+                ACTIVE JOBS
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {processingJobs.map(job => (
-                  <div key={job.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14, border: '1px solid rgba(0,229,160,0.15)' }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(0,229,160,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
-                      {(job as any).niche ? NICHE_ICONS[(job as any).niche] || '✨' : '✨'}
-                    </div>
+                  <div key={job.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 14, color: '#F0F4F8', marginBottom: 6, fontWeight: 500 }}>
                         {job.prompt.length > 70 ? job.prompt.slice(0, 70) + '…' : job.prompt}
@@ -107,7 +155,7 @@ export function DashboardPage() {
             </div>
 
             {loading ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+              <div className="content-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                 {[0,1,2,3,4,5].map(i => (
                   <div key={i} className="animate-shimmer" style={{ height: 180, borderRadius: 10 }} />
                 ))}
@@ -118,7 +166,7 @@ export function DashboardPage() {
                 <div style={{ fontSize: 14 }}>No content yet. Create your first post!</div>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+              <div className="content-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                 {pieces.map(piece => (
                   <div key={piece.id} className="card card-hover" style={{ padding: 0, overflow: 'hidden', cursor: 'pointer' }} onClick={() => navigate(`/review/${piece.job_id}`)}>
                     <div style={{ height: 130, background: '#161C24', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
@@ -160,9 +208,6 @@ export function DashboardPage() {
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontSize: 16 }}>{p.icon}</span>
                     <span style={{ flex: 1, fontSize: 13, color: '#F0F4F8' }}>{p.name}</span>
-                    {conn?.provider === 'zerio' && (
-                      <span style={{ fontSize: 8, color: '#00B4D8', fontFamily: 'JetBrains Mono', background: 'rgba(0,180,216,0.12)', padding: '1px 5px', borderRadius: 6 }}>ZERIO</span>
-                    )}
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: conn?.is_active ? '#00E5A0' : '#FF4757' }} />
                   </div>
                 )

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Check, ChevronLeft, RefreshCw, Calendar, Send, Play, Edit3, Loader2 } from 'lucide-react'
+import { Check, ChevronLeft, RefreshCw, Calendar, Play, Edit3, Loader2 } from 'lucide-react'
 import { supabase, db } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { PLATFORM_MAP } from '@/constants/platforms'
@@ -133,17 +133,22 @@ export function ReviewPage() {
 
   async function scheduleAll() {
     setScheduling(true)
-    const now = new Date()
-    for (const piece of pieces) {
-      if (!approved.has(piece.id) && pieces.length > 0) continue
-      await db.from('scheduled_posts').insert({
-        content_piece_id: piece.id,
-        user_id: user!.id,
-        platform: piece.platform,
-        scheduled_for: new Date(now.getTime() + Math.random() * 7200000).toISOString(),
-        status: 'scheduled',
-      })
+    const approvedPieces = pieces.filter(p => approved.has(p.id))
+    if (approvedPieces.length === 0) {
+      setScheduling(false)
+      return
     }
+    // Stagger across the next 24h, every 30min, starting at the next 15-min mark.
+    const first = new Date()
+    first.setMinutes(Math.ceil(first.getMinutes() / 15) * 15, 0, 0)
+    const rows = approvedPieces.map((piece, i) => ({
+      content_piece_id: piece.id,
+      user_id: user!.id,
+      platform: piece.platform,
+      scheduled_for: new Date(first.getTime() + i * 30 * 60 * 1000).toISOString(),
+      status: 'scheduled' as const,
+    }))
+    await db.from('scheduled_posts').insert(rows)
     setScheduling(false)
     navigate('/schedule')
   }
@@ -331,19 +336,6 @@ export function ReviewPage() {
                     {['Make hook punchier', 'Change music', 'Trim to 30s', 'Add CTA', 'Retone for professional'].map(action => (
                       <button
                         key={action}
-                        disabled={scheduling}
-                        onClick={async () => {
-                          setLoading(true)
-                          // Simulate an AI edit request
-                          setTimeout(async () => {
-                            const newCaption = `${caption}\n\n[Edited for: ${action}]`
-                            setCaption(newCaption)
-                            await db.from('content_pieces').update({ caption: newCaption }).eq('id', selectedPiece.id)
-                            setPieces(prev => prev.map(p => p.id === selectedPiece.id ? { ...p, caption: newCaption } : p))
-                            setSelectedPiece(prev => prev ? { ...prev, caption: newCaption } : null)
-                            setLoading(false)
-                          }, 1500)
-                        }}
                         className="btn-secondary"
                         style={{ fontSize: 12, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 6 }}
                       >

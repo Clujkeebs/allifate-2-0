@@ -89,35 +89,11 @@ Return a JSON array of these objects. Nothing else — pure JSON only.`
       })) : []
     }
 
-    // Stage 2: Asset sourcing (stock) or AI Image Generation
-    const sourceMode = job?.source_mode || 'stock'
-    if (sourceMode === 'ai_gen') {
-      await updateJobProgress(supabase, jobId, 'AI Image Generation — creating visuals for each scene', 30)
-      // Fire-and-forget the image generation edge function
-      try {
-        await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/generate-images`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-          },
-          body: JSON.stringify({
-            jobId,
-            sections: contentBriefs.map((b: Record<string, unknown>) => ({
-              description: b['visual_direction'] || b['script'] || prompt,
-              style: (job as Record<string, unknown>)['image_style'] || 'photorealistic',
-              tone,
-              aspectRatio: (job as Record<string, unknown>)['image_aspect_ratio'] || '9:16',
-            })),
-          }),
-        })
-      } catch {
-        console.warn('AI image generation trigger failed — continuing pipeline')
-      }
-    } else {
-      await updateJobProgress(supabase, jobId, 'Sourcing licensed stock assets', 30)
-    }
+    // Stage 2: Asset sourcing
+    await updateJobProgress(supabase, jobId, 'Sourcing licensed stock assets', 30)
 
+    // In production: call Pexels/Pixabay/Unsplash APIs here
+    // For now: log the search queries that would be generated
     await new Promise(r => setTimeout(r, 500))
 
     // Stage 3: Script finalization

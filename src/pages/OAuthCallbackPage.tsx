@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, X, Loader2, Link2 } from 'lucide-react'
 import { db } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import { exchangeCode as exchangeZerioCode, zerioConnectionsToRows } from '@/lib/zerio'
+import { exchangeCode as exchangeZernioCode, zernioConnectionsToRows } from '@/lib/zernio'
 
 type CallbackState = 'loading' | 'success' | 'error'
 
@@ -15,23 +15,23 @@ export function OAuthCallbackPage() {
   const [platform, setPlatform] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [accountName, setAccountName] = useState('')
-  const [isZerio, setIsZerio] = useState(false)
+  const [isZernio, setIsZernio] = useState(false)
 
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     let cancelled = false
 
     async function handleCallback() {
       const code = searchParams.get('code')
-      const provider = searchParams.get('provider') // 'zerio' or 'direct'
+      const provider = searchParams.get('provider') // 'zernio' or 'direct'
       const platformParam = searchParams.get('platform')
       const error = searchParams.get('error')
       const stateParam = searchParams.get('state')
 
-      if (provider === 'zerio') {
-        // ── Zerio callback flow ───────────────────────────
-        setIsZerio(true)
+      if (provider === 'zernio') {
+        // ── Zernio callback flow ───────────────────────────
+        setIsZernio(true)
 
         if (error) {
           setState('error')
@@ -41,7 +41,7 @@ export function OAuthCallbackPage() {
 
         if (!code) {
           setState('error')
-          setErrorMessage('No authorization code received from Zerio.')
+          setErrorMessage('No authorization code received from Zernio.')
           return
         }
 
@@ -59,17 +59,17 @@ export function OAuthCallbackPage() {
         }
 
         try {
-          // Exchange code via Zerio — returns connections for all authorized platforms
-          const connections = await exchangeZerioCode(code, user.id)
+          // Exchange code via Zernio — returns connections for all authorized platforms
+          const connections = await exchangeZernioCode(code, user.id)
 
           if (!connections || connections.length === 0) {
             setState('error')
-            setErrorMessage('No platform connections returned from Zerio. Did you authorize any platforms?')
+            setErrorMessage('No platform connections returned from Zernio. Did you authorize any platforms?')
             return
           }
 
-          // Convert Zerio connections to local rows and upsert them all
-          const rows = zerioConnectionsToRows(connections, user.id)
+          // Convert Zernio connections to local rows and upsert them all
+          const rows = zernioConnectionsToRows(connections, user.id)
 
           for (const row of rows) {
             await db.from('platform_connections').upsert(row, { onConflict: 'user_id, platform' })
@@ -83,7 +83,7 @@ export function OAuthCallbackPage() {
           timerRef.current = setTimeout(() => navigate('/settings'), 2500)
         } catch (err: unknown) {
           if (cancelled) return
-          const message = err instanceof Error ? err.message : 'Failed to exchange Zerio authorization code'
+          const message = err instanceof Error ? err.message : 'Failed to exchange Zernio authorization code'
           setErrorMessage(message)
           setState('error')
         }
@@ -212,7 +212,7 @@ export function OAuthCallbackPage() {
         {state === 'loading' && (
           <>
             <div style={{ marginBottom: 24 }}>
-              {isZerio ? (
+              {isZernio ? (
                 <div style={{
                   width: 48, height: 48, borderRadius: 12,
                   background: 'linear-gradient(135deg, #00E5A0, #00B4D8)',
@@ -226,11 +226,11 @@ export function OAuthCallbackPage() {
               )}
             </div>
             <h2 style={{ fontFamily: 'Syne', fontSize: 18, fontWeight: 700, color: '#F0F4F8', marginBottom: 8 }}>
-              {isZerio ? 'Connecting via Zerio' : `Connecting to ${PLATFORM_NAMES[platform] || platform}`}
+              {isZernio ? 'Connecting via Zernio' : `Connecting to ${PLATFORM_NAMES[platform] || platform}`}
             </h2>
             <p style={{ color: '#8B9EB0', fontSize: 13, lineHeight: 1.5 }}>
-              {isZerio
-                ? 'Zerio is authorizing your platforms — TikTok, Instagram, YouTube, X, LinkedIn, Facebook, Pinterest, and Snapchat…'
+              {isZernio
+                ? 'Zernio is authorizing your platforms — TikTok, Instagram, YouTube, X, LinkedIn, Facebook, Pinterest, and Snapchat…'
                 : 'Exchanging authorization code for access tokens…'
               }
             </p>
@@ -248,17 +248,17 @@ export function OAuthCallbackPage() {
               <Check size={28} color="#00E5A0" />
             </div>
             <h2 style={{ fontFamily: 'Syne', fontSize: 18, fontWeight: 700, color: '#F0F4F8', marginBottom: 8 }}>
-              {isZerio ? 'Platforms Connected!' : 'Connected!'}
+              {isZernio ? 'Platforms Connected!' : 'Connected!'}
             </h2>
             <p style={{ color: '#8B9EB0', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
-              {isZerio
-                ? `${platform} linked via Zerio${accountName ? `: ${accountName}` : ''}`
+              {isZernio
+                ? `${platform} linked via Zernio${accountName ? `: ${accountName}` : ''}`
                 : `${PLATFORM_NAMES[platform] || platform} ${accountName ? `(@${accountName})` : ''} has been linked to your Virlo account.`
               }
             </p>
-            {isZerio && (
+            {isZernio && (
               <p style={{ color: '#00B4D8', fontSize: 12, marginBottom: 16, fontFamily: 'JetBrains Mono' }}>
-                Powered by Zerio — all tokens managed automatically
+                Powered by Zernio — all tokens managed automatically
               </p>
             )}
             <p style={{ color: '#4A5E70', fontSize: 12 }}>

@@ -18,6 +18,7 @@ export interface Profile {
   created_at: string
   brand_colors: string[] | null
   brand_logo_url: string | null
+  api_key: string | null
 }
 
 export interface PlatformConnection {
@@ -32,10 +33,8 @@ export interface PlatformConnection {
   expires_at: string | null
   is_active: boolean
   created_at: string
-  /** Zerio connection ID — null for direct OAuth connections */
-  zerio_connection_id: string | null
-  /** Connection provider: 'zerio' or 'direct' (per-platform OAuth) */
-  provider: 'zerio' | 'direct'
+  zernio_connection_id: string | null
+  provider: 'zernio' | 'direct'
 }
 
 export interface ContentJob {
@@ -49,15 +48,15 @@ export interface ContentJob {
   created_at: string
   completed_at: string | null
   error_message: string | null
-  source_mode: 'upload' | 'stock' | 'ai_gen' | 'screen'
+  source_mode: 'upload' | 'stock' | 'screen'
   tone: string | null
   music_mood: string | null
   video_length: number | null
   caption_style: string | null
-  /** AI image generation style preset */
   image_style: string | null
-  /** AI image generation aspect ratio */
   image_aspect_ratio: string | null
+  voice_id: string | null
+  niche: string | null
 }
 
 export interface ContentPiece {
@@ -76,6 +75,7 @@ export interface ContentPiece {
   posted_at: string | null
   script: string | null
   hook: string | null
+  script_segments: Json
 }
 
 export interface UserAsset {
@@ -100,8 +100,16 @@ export interface ScheduledPost {
   status: PostStatus
   platform_post_id: string | null
   error_message: string | null
-  /** Zerio post ID — for webhook event correlation */
-  zerio_post_id: string | null
+  zernio_post_id: string | null
+}
+
+export interface UsageLog {
+  id: string
+  user_id: string
+  action: string
+  credits_used: number
+  metadata: Json | null
+  created_at: string
 }
 
 export interface PostAnalytics {
@@ -146,6 +154,7 @@ export interface Database {
           credits_remaining?: number
           brand_colors?: string[] | null
           brand_logo_url?: string | null
+          api_key?: string | null
         }
         Update: {
           id?: string
@@ -157,6 +166,7 @@ export interface Database {
           credits_remaining?: number
           brand_colors?: string[] | null
           brand_logo_url?: string | null
+          api_key?: string | null
         }
       }
       platform_connections: {
@@ -172,8 +182,8 @@ export interface Database {
           account_avatar?: string | null
           expires_at?: string | null
           is_active?: boolean
-          zerio_connection_id?: string | null
-          provider?: 'zerio' | 'direct'
+          zernio_connection_id?: string | null
+          provider?: 'zernio' | 'direct'
         }
         Update: {
           is_active?: boolean
@@ -182,8 +192,8 @@ export interface Database {
           expires_at?: string | null
           account_name?: string
           account_avatar?: string | null
-          zerio_connection_id?: string | null
-          provider?: 'zerio' | 'direct'
+          zernio_connection_id?: string | null
+          provider?: 'zernio' | 'direct'
         }
       }
       content_jobs: {
@@ -196,7 +206,7 @@ export interface Database {
           platforms?: Platform[]
           pipeline_stage?: string | null
           pipeline_progress?: number
-          source_mode?: 'upload' | 'stock' | 'ai_gen' | 'screen'
+          source_mode?: 'upload' | 'stock' | 'screen'
           tone?: string | null
           music_mood?: string | null
           video_length?: number | null
@@ -205,6 +215,8 @@ export interface Database {
           completed_at?: string | null
           image_style?: string | null
           image_aspect_ratio?: string | null
+          voice_id?: string | null
+          niche?: string | null
         }
         Update: {
           status?: JobStatus
@@ -214,6 +226,8 @@ export interface Database {
           completed_at?: string | null
           image_style?: string | null
           image_aspect_ratio?: string | null
+          voice_id?: string | null
+          niche?: string | null
         }
       }
       content_pieces: {
@@ -234,6 +248,7 @@ export interface Database {
           status?: 'draft' | 'approved' | 'posted'
           engagement_score?: number | null
           posted_at?: string | null
+          script_segments?: Json
         }
         Update: {
           video_url?: string | null
@@ -243,6 +258,7 @@ export interface Database {
           status?: 'draft' | 'approved' | 'posted'
           engagement_score?: number | null
           posted_at?: string | null
+          script_segments?: Json
         }
       }
       user_assets: {
@@ -275,7 +291,7 @@ export interface Database {
           status?: PostStatus
           platform_post_id?: string | null
           error_message?: string | null
-          zerio_post_id?: string | null
+          zernio_post_id?: string | null
         }
         Update: {
           scheduled_for?: string
@@ -283,7 +299,22 @@ export interface Database {
           posted_at?: string | null
           platform_post_id?: string | null
           error_message?: string | null
-          zerio_post_id?: string | null
+          zernio_post_id?: string | null
+        }
+      }
+      usage_logs: {
+        Row: UsageLog
+        Insert: {
+          id?: string
+          user_id: string
+          action: string
+          credits_used?: number
+          metadata?: Json | null
+        }
+        Update: {
+          action?: string
+          credits_used?: number
+          metadata?: Json | null
         }
       }
       post_analytics: {

@@ -205,8 +205,6 @@ async function generateWithOpenAI(options: ImageGenOptions): Promise<GeneratedIm
   const { width, height } = getDimensions(options)
   const count = Math.min(options.count || 1, 1) // DALL-E generates 1 at a time
 
-  // Map style to DALL-E quality
-  const size = width >= height ? `${width}x${height}` : `${height}x${width}`
   const dallESize = width === height ? '1024x1024' : width > height ? '1792x1024' : '1024x1792'
 
   const response = await fetch('https://api.openai.com/v1/images/generations', {

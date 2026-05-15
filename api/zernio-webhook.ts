@@ -1,22 +1,23 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import crypto from 'node:crypto'
 
 /**
- * Zerio Webhook Endpoint
+ * Zernio Webhook Endpoint
  *
- * Receives incoming webhooks from Zerio:
+ * Receives incoming webhooks from Zernio:
  * - post.status — Post status updates (published, failed)
  * - post.analytics — Analytics data push
  * - connection.disconnected — Platform disconnected
  * - connection.refreshed — Token refreshed
  *
- * Set this URL in your Zerio dashboard:
- *   https://your-domain.com/api/zerio-webhook
+ * Set this URL in your Zernio dashboard:
+ *   https://your-domain.com/api/zernio-webhook
  */
 
 // ── Configuration ──────────────────────────────────────────────
 
-const ZERIO_WEBHOOK_SECRET = process.env.ZERIO_WEBHOOK_SECRET || ''
+const ZERNIO_WEBHOOK_SECRET = process.env.ZERNIO_WEBHOOK_SECRET || ''
 const SUPABASE_URL = process.env.SUPABASE_URL || ''
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
@@ -32,21 +33,20 @@ function getSupabaseAdmin() {
 // ── Security ───────────────────────────────────────────────────
 
 function validateSignature(req: VercelRequest): boolean {
-  if (!ZERIO_WEBHOOK_SECRET) {
-    console.warn('ZERIO_WEBHOOK_SECRET not configured — accepting all requests')
+  if (!ZERNIO_WEBHOOK_SECRET) {
+    console.warn('ZERNIO_WEBHOOK_SECRET not configured — accepting all requests')
     return true
   }
-  const signature = req.headers['x-zerio-signature'] as string
+  const signature = req.headers['x-zernio-signature'] as string
   if (!signature) return false
 
   try {
-    const crypto = require('crypto')
     return crypto.timingSafeEqual(
       Buffer.from(signature),
-      Buffer.from(ZERIO_WEBHOOK_SECRET)
+      Buffer.from(ZERNIO_WEBHOOK_SECRET)
     )
   } catch {
-    return signature === ZERIO_WEBHOOK_SECRET
+    return signature === ZERNIO_WEBHOOK_SECRET
   }
 }
 
@@ -55,7 +55,7 @@ function validateSignature(req: VercelRequest): boolean {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Zerio-Signature')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Zernio-Signature')
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
@@ -78,18 +78,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     switch (event) {
-      // ── Post status update (Zerio → Virlo) ──
+      // ── Post status update (Zernio → Virlo) ──
       case 'post.status': {
-        const { zerio_post_id, platform_post_id, post_url, status, error_message } = data
-        if (!zerio_post_id) {
-          return res.status(400).json({ error: 'Missing "zerio_post_id"' })
+        const { zernio_post_id, platform_post_id, status, error_message } = data
+        if (!zernio_post_id) {
+          return res.status(400).json({ error: 'Missing "zernio_post_id"' })
         }
 
-        // Find the scheduled post by Zerio post ID
+        // Find the scheduled post by Zernio post ID
         const { data: schedules } = await admin
           .from('scheduled_posts')
           .select('id, content_piece_id')
-          .eq('platform_post_id', zerio_post_id)
+          .eq('platform_post_id', zernio_post_id)
           .limit(1)
 
         if (schedules?.length) {
@@ -115,7 +115,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json({ success: true, message: 'Post status updated' })
       }
 
-      // ── Analytics push (Zerio → Virlo) ──
+      // ── Analytics push (Zernio → Virlo) ──
       case 'post.analytics': {
         const { content_piece_id, platform, views, likes, shares, comments, saves, watch_time_avg, click_rate } = data
         if (!content_piece_id) {
@@ -141,26 +141,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json({ success: true, message: 'Analytics updated' })
       }
 
-      // ── Connection disconnected (Zerio → Virlo) ──
+      // ── Connection disconnected (Zernio → Virlo) ──
       case 'connection.disconnected': {
-        const { zerio_connection_id } = data
-        if (!zerio_connection_id) {
-          return res.status(400).json({ error: 'Missing "zerio_connection_id"' })
+        const { zernio_connection_id } = data
+        if (!zernio_connection_id) {
+          return res.status(400).json({ error: 'Missing "zernio_connection_id"' })
         }
 
         await admin
           .from('platform_connections')
           .update({ is_active: false })
-          .eq('zerio_connection_id', zerio_connection_id)
+          .eq('zernio_connection_id', zernio_connection_id)
 
         return res.status(200).json({ success: true, message: 'Connection marked inactive' })
       }
 
-      // ── Token refreshed (Zerio → Virlo) ──
+      // ── Token refreshed (Zernio → Virlo) ──
       case 'connection.refreshed': {
-        const { zerio_connection_id, access_token, refresh_token, expires_at } = data
-        if (!zerio_connection_id) {
-          return res.status(400).json({ error: 'Missing "zerio_connection_id"' })
+        const { zernio_connection_id, access_token, refresh_token, expires_at } = data
+        if (!zernio_connection_id) {
+          return res.status(400).json({ error: 'Missing "zernio_connection_id"' })
         }
 
         await admin
@@ -170,7 +170,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             refresh_token: refresh_token || null,
             expires_at: expires_at || null,
           })
-          .eq('zerio_connection_id', zerio_connection_id)
+          .eq('zernio_connection_id', zernio_connection_id)
 
         return res.status(200).json({ success: true, message: 'Token refreshed' })
       }
@@ -187,7 +187,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal server error'
-    console.error('Zerio webhook error:', message)
+    console.error('Zernio webhook error:', message)
     return res.status(500).json({ error: message })
   }
 }

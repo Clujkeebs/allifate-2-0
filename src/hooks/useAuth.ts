@@ -24,7 +24,7 @@ export function useAuth() {
       }
     )
     return () => authSub.unsubscribe()
-  }, [])
+  }, [fetchProfile, setInitialized, setLoading, setSession, setUser])
 
   return { user, session, profile, subscription, loading, initialized }
 }

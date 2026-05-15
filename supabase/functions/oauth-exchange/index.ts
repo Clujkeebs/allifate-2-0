@@ -88,7 +88,7 @@ async function exchangeCode(platform: string, code: string) {
     case 'instagram':
       return exchangeInstagram(code)
     case 'youtube':
-      return exchangeGoogle(code, 'youtube')
+      return exchangeGoogle(code)
     case 'twitter':
       return exchangeTwitter(code)
     case 'linkedin':
@@ -177,7 +177,7 @@ async function exchangeInstagram(code: string) {
   }
 }
 
-async function exchangeGoogle(code: string, _platform: string) {
+async function exchangeGoogle(code: string) {
   const clientId = Deno.env.get('GOOGLE_CLIENT_ID') ?? ''
   const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET') ?? ''
   if (!clientId || !clientSecret) throw new Error('Google OAuth credentials not configured')

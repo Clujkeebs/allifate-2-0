@@ -1,22 +1,22 @@
 /**
- * Zerio Integration — Social Media API Aggregator
+ * Zernio Integration — Social Media API Aggregator
  *
- * Zerio handles multi-platform OAuth, posting, and analytics through a single API.
- * This module abstracts all Zerio interactions and tracks referral/revenue share.
+ * Zernio handles multi-platform OAuth, posting, and analytics through a single API.
+ * This module abstracts all Zernio interactions and tracks referral/revenue share.
  *
- * When Zerio is not configured (no ZERIO_API_KEY in env), the module gracefully
+ * When Zernio is not configured (no ZERNIO_API_KEY in env), the module gracefully
  * returns null/disabled — the UI falls back to per-platform OAuth.
  *
- * To enable: set VITE_ZERIO_API_KEY + ZERIO_API_SECRET in your .env
- * Referral: set ZERIO_REFERRAL_CODE to track revenue share
+ * To enable: set VITE_ZERNIO_API_KEY + ZERNIO_API_SECRET in your .env
+ * Referral: set ZERNIO_REFERRAL_CODE to track revenue share
  */
 
 import type { Platform } from '@/types/database'
 
 // ── Types ──────────────────────────────────────────────────────
 
-export interface ZerioConnection {
-  /** Zerio's internal connection ID */
+export interface ZernioConnection {
+  /** Zernio's internal connection ID */
   id: string
   /** Platform identifier */
   platform: Platform
@@ -36,7 +36,7 @@ export interface ZerioConnection {
   is_active: boolean
 }
 
-export interface ZerioPostContent {
+export interface ZernioPostContent {
   /** Text caption / description */
   caption: string
   /** Video/image URL to post */
@@ -49,8 +49,8 @@ export interface ZerioPostContent {
   thumbnail_url?: string
 }
 
-export interface ZerioPostResult {
-  /** Zerio post ID */
+export interface ZernioPostResult {
+  /** Zernio post ID */
   id: string
   /** Platform-specific post ID/URL */
   platform_post_id: string
@@ -62,7 +62,7 @@ export interface ZerioPostResult {
   error?: string
 }
 
-export interface ZerioAnalytics {
+export interface ZernioAnalytics {
   post_id: string
   platform: Platform
   views: number
@@ -75,7 +75,7 @@ export interface ZerioAnalytics {
   fetched_at: string
 }
 
-export interface ZerioAuthUrlResponse {
+export interface ZernioAuthUrlResponse {
   /** URL to redirect the user to for OAuth authorization */
   url: string
   /** Session ID to track this auth attempt */
@@ -84,48 +84,48 @@ export interface ZerioAuthUrlResponse {
 
 // ── Configuration ──────────────────────────────────────────────
 
-const ZERIO_BASE_URL = import.meta.env.VITE_ZERIO_BASE_URL || 'https://api.zerio.io/v1'
-const ZERIO_API_KEY = import.meta.env.VITE_ZERIO_API_KEY || ''
-const ZERIO_REFERRAL_CODE = import.meta.env.VITE_ZERIO_REFERRAL_CODE || ''
+const ZERNIO_BASE_URL = import.meta.env.VITE_ZERNIO_BASE_URL || 'https://api.zernio.io/v1'
+const ZERNIO_API_KEY = import.meta.env.VITE_ZERNIO_API_KEY || ''
+const ZERNIO_REFERRAL_CODE = import.meta.env.VITE_ZERNIO_REFERRAL_CODE || ''
 
-/** Whether Zerio is configured and available */
-export function isZerioConfigured(): boolean {
-  return Boolean(ZERIO_API_KEY)
+/** Whether Zernio is configured and available */
+export function isZernioConfigured(): boolean {
+  return Boolean(ZERNIO_API_KEY)
 }
 
-/** Get the Zerio referral code (for revenue share tracking) */
+/** Get the Zernio referral code (for revenue share tracking) */
 export function getReferralCode(): string {
-  return ZERIO_REFERRAL_CODE
+  return ZERNIO_REFERRAL_CODE
 }
 
 // ── Internal helpers ───────────────────────────────────────────
 
-function zerioHeaders(extra: Record<string, string> = {}): Record<string, string> {
+function zernioHeaders(extra: Record<string, string> = {}): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'X-Zerio-API-Key': ZERIO_API_KEY,
+    'X-Zernio-API-Key': ZERNIO_API_KEY,
     ...extra,
   }
   // Revenue-share / affiliate tracking header
-  if (ZERIO_REFERRAL_CODE) {
-    headers['X-Zerio-Referral'] = ZERIO_REFERRAL_CODE
+  if (ZERNIO_REFERRAL_CODE) {
+    headers['X-Zernio-Referral'] = ZERNIO_REFERRAL_CODE
   }
   return headers
 }
 
-async function zerioFetch<T>(
+async function zernioFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  if (!isZerioConfigured()) {
-    throw new Error('Zerio is not configured. Set VITE_ZERIO_API_KEY in your .env file.')
+  if (!isZernioConfigured()) {
+    throw new Error('Zernio is not configured. Set VITE_ZERNIO_API_KEY in your .env file.')
   }
 
-  const url = `${ZERIO_BASE_URL}${path}`
+  const url = `${ZERNIO_BASE_URL}${path}`
   const response = await fetch(url, {
     ...options,
     headers: {
-      ...zerioHeaders(),
+      ...zernioHeaders(),
       ...(options.headers as Record<string, string> || {}),
     },
   })
@@ -133,7 +133,7 @@ async function zerioFetch<T>(
   if (!response.ok) {
     const body = await response.json().catch(() => ({}))
     throw new Error(
-      body.error || body.message || `Zerio API error: ${response.status} ${response.statusText}`
+      body.error || body.message || `Zernio API error: ${response.status} ${response.statusText}`
     )
   }
 
@@ -143,8 +143,8 @@ async function zerioFetch<T>(
 // ── Public API ─────────────────────────────────────────────────
 
 /**
- * Get the Zerio OAuth URL for connecting all platforms.
- * The user will be redirected to Zerio's hosted OAuth flow where they
+ * Get the Zernio OAuth URL for connecting all platforms.
+ * The user will be redirected to Zernio's hosted OAuth flow where they
  * can select which platforms to connect.
  *
  * @param redirectUri - Your app's callback URL (e.g., https://yourapp.com/oauth/callback)
@@ -154,36 +154,36 @@ async function zerioFetch<T>(
 export async function getAuthUrl(
   redirectUri: string,
   userId: string
-): Promise<ZerioAuthUrlResponse> {
+): Promise<ZernioAuthUrlResponse> {
   const params = new URLSearchParams({
     redirect_uri: redirectUri,
     state: userId,
-    // Request all 8 platforms — Zerio lets the user pick which to authorize
+    // Request all 8 platforms — Zernio lets the user pick which to authorize
     platforms: 'tiktok,instagram,youtube,twitter,linkedin,facebook,pinterest,snapchat',
   })
 
-  if (ZERIO_REFERRAL_CODE) {
-    params.set('referral', ZERIO_REFERRAL_CODE)
+  if (ZERNIO_REFERRAL_CODE) {
+    params.set('referral', ZERNIO_REFERRAL_CODE)
   }
 
-  return zerioFetch<ZerioAuthUrlResponse>(
+  return zernioFetch<ZernioAuthUrlResponse>(
     `/auth/url?${params.toString()}`
   )
 }
 
 /**
  * Exchange an OAuth authorization code for platform connections.
- * Called from your OAuth callback page after Zerio redirects back.
+ * Called from your OAuth callback page after Zernio redirects back.
  *
- * @param code - The authorization code from Zerio's redirect
+ * @param code - The authorization code from Zernio's redirect
  * @param userId - The current user's ID (for state validation)
  * @returns Array of platform connections
  */
 export async function exchangeCode(
   code: string,
   userId: string
-): Promise<ZerioConnection[]> {
-  const result = await zerioFetch<{ connections: ZerioConnection[] }>(
+): Promise<ZernioConnection[]> {
+  const result = await zernioFetch<{ connections: ZernioConnection[] }>(
     '/auth/token',
     {
       method: 'POST',
@@ -194,39 +194,39 @@ export async function exchangeCode(
 }
 
 /**
- * Get all connections for a user from Zerio.
+ * Get all connections for a user from Zernio.
  * Useful for syncing connection state.
  */
-export async function getConnections(userId: string): Promise<ZerioConnection[]> {
-  const result = await zerioFetch<{ connections: ZerioConnection[] }>(
+export async function getConnections(userId: string): Promise<ZernioConnection[]> {
+  const result = await zernioFetch<{ connections: ZernioConnection[] }>(
     `/connections?user_id=${encodeURIComponent(userId)}`
   )
   return result.connections || []
 }
 
 /**
- * Disconnect a platform via Zerio.
- * This revokes the OAuth token on Zerio's side and marks the connection inactive.
+ * Disconnect a platform via Zernio.
+ * This revokes the OAuth token on Zernio's side and marks the connection inactive.
  */
 export async function disconnectPlatform(
   userId: string,
   platform: Platform
 ): Promise<void> {
-  await zerioFetch(
+  await zernioFetch(
     `/connections/${encodeURIComponent(platform)}?user_id=${encodeURIComponent(userId)}`,
     { method: 'DELETE' }
   )
 }
 
 /**
- * Post content to a platform via Zerio.
+ * Post content to a platform via Zernio.
  */
 export async function postContent(
   userId: string,
   platform: Platform,
-  content: ZerioPostContent
-): Promise<ZerioPostResult> {
-  return zerioFetch<ZerioPostResult>('/post', {
+  content: ZernioPostContent
+): Promise<ZernioPostResult> {
+  return zernioFetch<ZernioPostResult>('/post', {
     method: 'POST',
     body: JSON.stringify({
       user_id: userId,
@@ -237,51 +237,51 @@ export async function postContent(
 }
 
 /**
- * Get analytics for a specific post from Zerio.
+ * Get analytics for a specific post from Zernio.
  */
 export async function getPostAnalytics(
   userId: string,
-  zerioPostId: string
-): Promise<ZerioAnalytics> {
-  return zerioFetch<ZerioAnalytics>(
-    `/analytics/${encodeURIComponent(zerioPostId)}?user_id=${encodeURIComponent(userId)}`
+  zernioPostId: string
+): Promise<ZernioAnalytics> {
+  return zernioFetch<ZernioAnalytics>(
+    `/analytics/${encodeURIComponent(zernioPostId)}?user_id=${encodeURIComponent(userId)}`
   )
 }
 
 /**
- * Get analytics for all posts across platforms from Zerio.
+ * Get analytics for all posts across platforms from Zernio.
  */
 export async function getAllAnalytics(
   userId: string,
   options: { days?: number; platform?: Platform } = {}
-): Promise<ZerioAnalytics[]> {
+): Promise<ZernioAnalytics[]> {
   const params = new URLSearchParams({ user_id: userId })
   if (options.days) params.set('days', String(options.days))
   if (options.platform) params.set('platform', options.platform)
 
-  const result = await zerioFetch<{ analytics: ZerioAnalytics[] }>(
+  const result = await zernioFetch<{ analytics: ZernioAnalytics[] }>(
     `/analytics?${params.toString()}`
   )
   return result.analytics || []
 }
 
 /**
- * Check the health/status of the Zerio API.
+ * Check the health/status of the Zernio API.
  */
-export async function pingZerio(): Promise<{ status: string; timestamp: string }> {
-  return zerioFetch('/ping')
+export async function pingZernio(): Promise<{ status: string; timestamp: string }> {
+  return zernioFetch('/ping')
 }
 
 // ── Sync helper ────────────────────────────────────────────────
 
 /**
- * Sync Zerio connections to the local platform_connections table.
+ * Sync Zernio connections to the local platform_connections table.
  * Call this after exchanging codes or whenever you need to reconcile state.
  *
  * Returns the platform_connections rows ready to upsert.
  */
-export function zerioConnectionsToRows(
-  connections: ZerioConnection[],
+export function zernioConnectionsToRows(
+  connections: ZernioConnection[],
   userId: string
 ): Array<{
   user_id: string
@@ -293,8 +293,8 @@ export function zerioConnectionsToRows(
   account_avatar: string | null
   expires_at: string | null
   is_active: boolean
-  zerio_connection_id: string
-  provider: 'zerio'
+  zernio_connection_id: string
+  provider: 'zernio'
 }> {
   return connections.map(c => ({
     user_id: userId,
@@ -306,7 +306,7 @@ export function zerioConnectionsToRows(
     account_avatar: c.account_avatar,
     expires_at: c.expires_at,
     is_active: c.is_active,
-    zerio_connection_id: c.id,
-    provider: 'zerio' as const,
+    zernio_connection_id: c.id,
+    provider: 'zernio' as const,
   }))
 }

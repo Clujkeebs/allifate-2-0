@@ -5,11 +5,8 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { SUBSCRIPTION_PLANS } from '@/constants/platforms'
 
-const STRIPE_PRICE_IDS: Record<string, { monthly: string; annual: string }> = {
-  starter: { monthly: 'price_starter_monthly', annual: 'price_starter_annual' },
-  pro: { monthly: 'price_pro_monthly', annual: 'price_pro_annual' },
-  agency: { monthly: 'price_agency_monthly', annual: 'price_agency_annual' },
-}
+// We send the plan + cadence; the API maps to the real Stripe price id from
+// env (STRIPE_PRICE_<PLAN>_<MONTHLY|ANNUAL>) so test/prod keys never get mixed.
 
 const FAQS = [
   {
@@ -202,15 +199,6 @@ export function UpgradePage() {
     setError(null)
 
     try {
-      const priceId = isAnnual
-        ? STRIPE_PRICE_IDS[planId]?.annual
-        : STRIPE_PRICE_IDS[planId]?.monthly
-
-      if (!priceId) throw new Error('Invalid plan selected')
-
-      // In production: hit your backend to create a Stripe Checkout session
-      // For now, we show the production-ready UI and guide the user
-
       const { data: { session } } = await supabase.auth.getSession()
 
       const res = await fetch('/api/create-checkout', {
@@ -219,16 +207,18 @@ export function UpgradePage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.access_token ?? ''}`,
         },
-        body: JSON.stringify({ priceId, planId, userId: user.id, annual: isAnnual }),
+        body: JSON.stringify({ plan: planId, annual: isAnnual }),
       })
 
       if (res.status === 404) {
-        // API route not yet deployed — redirect to Stripe directly
         setError('Payment service is temporarily unavailable. Please try again in a moment or contact support.')
         return
       }
 
-      if (!res.ok) throw new Error(await res.text())
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: `Checkout failed (${res.status})` }))
+        throw new Error(body.error || `Checkout failed (${res.status})`)
+      }
 
       const { url } = await res.json()
       if (url) window.location.href = url

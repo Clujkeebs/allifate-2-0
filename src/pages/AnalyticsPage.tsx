@@ -1,10 +1,76 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Eye, Heart, Share2, Bookmark, TrendingUp, Lightbulb, ExternalLink } from 'lucide-react'
+import { Eye, Heart, Share2, Bookmark, TrendingUp } from 'lucide-react'
 import { db } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { PLATFORMS, PLATFORM_MAP } from '@/constants/platforms'
 import type { PostAnalytics, ContentPiece, Platform as PlatformType } from '@/types/database'
+
+// Build a 30-day daily series from the rows we actually fetched.
+// Days with no data show as 0 — no synthetic numbers.
+function buildDailySeries(rows: PostAnalytics[]) {
+  const days: { key: string; date: string; views: number; likes: number; shares: number }[] = []
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * 86400000)
+    days.push({
+      key: d.toISOString().slice(0, 10),
+      date: d.toLocaleDateString('en', { month: 'short', day: 'numeric' }),
+      views: 0,
+      likes: 0,
+      shares: 0,
+    })
+  }
+  const byKey = new Map(days.map(d => [d.key, d]))
+  for (const r of rows) {
+    const key = r.fetched_at?.slice(0, 10)
+    const bucket = key ? byKey.get(key) : undefined
+    if (!bucket) continue
+    bucket.views += r.views || 0
+    bucket.likes += r.likes || 0
+    bucket.shares += r.shares || 0
+  }
+  return days
+}
+
+function buildInsights(rows: PostAnalytics[], pieces: ContentPiece[]): string[] {
+  if (rows.length === 0 || pieces.length === 0) return []
+  const out: string[] = []
+  const byPlatform = new Map<string, { likes: number; views: number; n: number }>()
+  for (const r of rows) {
+    const b = byPlatform.get(r.platform) ?? { likes: 0, views: 0, n: 0 }
+    b.likes += r.likes || 0
+    b.views += r.views || 0
+    b.n += 1
+    byPlatform.set(r.platform, b)
+  }
+  const ranked = [...byPlatform.entries()]
+    .filter(([, v]) => v.views > 0)
+    .map(([p, v]) => ({ platform: p, rate: v.likes / v.views, views: v.views, likes: v.likes }))
+    .sort((a, b) => b.rate - a.rate)
+
+  if (ranked.length >= 2) {
+    const top = ranked[0]
+    const bottom = ranked[ranked.length - 1]
+    if (top.rate > 0 && bottom.rate > 0) {
+      const factor = (top.rate / bottom.rate).toFixed(1)
+      out.push(`${top.platform.toUpperCase()} is converting views to likes at ${factor}× the rate of ${bottom.platform.toUpperCase()}.`)
+    }
+  }
+  const totalViews = rows.reduce((s, r) => s + (r.views || 0), 0)
+  if (totalViews > 0) {
+    out.push(`${totalViews.toLocaleString()} total views across ${pieces.length} posts in the last 30 days.`)
+  }
+  const best = pieces
+    .map(p => ({ p, a: rows.find(r => r.content_piece_id === p.id) }))
+    .filter(x => x.a)
+    .sort((a, b) => (b.a!.views || 0) - (a.a!.views || 0))[0]
+  if (best?.p?.hook && best.a) {
+    out.push(`Top post (${(best.a.views || 0).toLocaleString()} views): "${best.p.hook.slice(0, 80)}…"`)
+  }
+  return out
+}
 
 function StatCard({ label, value, icon, color }: { label: string; value: string | number; icon: React.ReactNode; color: string }) {
   return (
@@ -40,44 +106,40 @@ export function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<PostAnalytics[]>([])
   const [pieces, setPieces] = useState<ContentPiece[]>([])
   const [loading, setLoading] = useState(true)
-  const [totals, setComputedTotals] = useState({ views: 0, likes: 0, shares: 0, saves: 0 })
-  const [chartData, setChartData] = useState<{ date: string; views: number; likes: number; shares: number }[]>([])
 
   useEffect(() => {
     if (!user) return
+    const since = new Date(Date.now() - 30 * 86400000).toISOString()
     Promise.all([
       // RLS filters by user via content_piece_id → content_pieces.user_id
-      db.from('post_analytics').select('*').order('fetched_at', { ascending: false }),
+      db.from('post_analytics').select('*').gte('fetched_at', since).order('fetched_at', { ascending: false }),
       db.from('content_pieces').select('*').eq('user_id', user.id).eq('status', 'posted').order('posted_at', { ascending: false }).limit(20),
     ]).then(([analyticsRes, piecesRes]) => {
-      const aData = analyticsRes.data || []
-      setAnalytics(aData)
+      setAnalytics(analyticsRes.data || [])
       setPieces(piecesRes.data || [])
-      setComputedTotals(aData.reduce((acc: { views: number; likes: number; shares: number; saves: number }, a: PostAnalytics) => ({
-        views: acc.views + a.views,
-        likes: acc.likes + a.likes,
-        shares: acc.shares + a.shares,
-        saves: acc.saves + a.saves,
-      }), { views: 0, likes: 0, shares: 0, saves: 0 }))
-      // Build real chart data from analytics grouped by date
-      const grouped = new Map<string, { views: number; likes: number; shares: number }>()
-      aData.forEach(a => {
-        if (!a.fetched_at) return
-        const date = new Date(a.fetched_at).toLocaleDateString('en', { month: 'short', day: 'numeric' })
-        const existing = grouped.get(date) || { views: 0, likes: 0, shares: 0 }
-        existing.views += a.views
-        existing.likes += a.likes
-        existing.shares += a.shares
-        grouped.set(date, existing)
-      })
-      const computed = Array.from(grouped.entries())
-        .map(([date, vals]) => ({ date, ...vals }))
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .slice(-30)
-      setChartData(computed)
       setLoading(false)
     })
   }, [user])
+
+  const scopedAnalytics = useMemo(
+    () => activePlatform === 'all' ? analytics : analytics.filter(a => a.platform === activePlatform),
+    [analytics, activePlatform],
+  )
+
+  const totals = useMemo(
+    () => scopedAnalytics.reduce(
+      (acc, a) => ({
+        views: acc.views + (a.views || 0),
+        likes: acc.likes + (a.likes || 0),
+        shares: acc.shares + (a.shares || 0),
+        saves: acc.saves + (a.saves || 0),
+      }),
+      { views: 0, likes: 0, shares: 0, saves: 0 },
+    ),
+    [scopedAnalytics],
+  )
+
+  const chartData = useMemo(() => buildDailySeries(scopedAnalytics), [scopedAnalytics])
 
   return (
     <div style={{ padding: 28, maxWidth: 1200, margin: '0 auto' }}>
@@ -107,10 +169,10 @@ export function AnalyticsPage() {
 
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
-        <StatCard label="VIRAL REACH" value={totals.views > 0 ? totals.views.toLocaleString() : '0'} icon={<Eye size={16} />} color="#00B4D8" />
-        <StatCard label="ESTIMATED ROI" value={totals.views > 0 ? '$' + (totals.views * 0.002).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '$0.00'} icon={<TrendingUp size={16} />} color="#00E5A0" />
-        <StatCard label="ENGAGEMENTS" value={totals.likes + totals.shares + totals.saves > 0 ? (totals.likes + totals.shares + totals.saves).toLocaleString() : '0'} icon={<Heart size={16} />} color="#e1306c" />
-        <StatCard label="TOTAL SAVES" value={totals.saves > 0 ? totals.saves.toLocaleString() : '0'} icon={<Bookmark size={16} />} color="#FFB547" />
+        <StatCard label="Total Views" value={totals.views > 0 ? totals.views.toLocaleString() : '—'} icon={<Eye size={16} />} color="#00B4D8" />
+        <StatCard label="Total Likes" value={totals.likes > 0 ? totals.likes.toLocaleString() : '—'} icon={<Heart size={16} />} color="#e1306c" />
+        <StatCard label="Total Shares" value={totals.shares > 0 ? totals.shares.toLocaleString() : '—'} icon={<Share2 size={16} />} color="#1d9bf0" />
+        <StatCard label="Total Saves" value={totals.saves > 0 ? totals.saves.toLocaleString() : '—'} icon={<Bookmark size={16} />} color="#FFB547" />
       </div>
 
       {/* Charts */}
@@ -118,8 +180,14 @@ export function AnalyticsPage() {
         {/* Views over time */}
         <div className="card">
           <h3 style={{ fontFamily: 'Syne', fontSize: 14, fontWeight: 600, color: '#8B9EB0', marginBottom: 20 }}>VIEWS OVER TIME — LAST 30 DAYS</h3>
+          {totals.views === 0 && !loading ? (
+            <div style={{ height: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#4A5E70', fontSize: 13, gap: 6 }}>
+              <Eye size={20} style={{ opacity: 0.4 }} />
+              <span>No analytics yet. Once a scheduled post publishes, metrics show here automatically.</span>
+            </div>
+          ) : (
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={chartData.length > 0 ? chartData : [{ date: 'No data', views: 0, likes: 0, shares: 0 }]} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
               <defs>
                 <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#00E5A0" stopOpacity={0.2} />
@@ -132,88 +200,66 @@ export function AnalyticsPage() {
               <Area type="monotone" dataKey="views" stroke="#00E5A0" strokeWidth={2} fill="url(#viewsGradient)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
+          )}
         </div>
 
         {/* Engagement per platform */}
         <div className="card">
           <h3 style={{ fontFamily: 'Syne', fontSize: 14, fontWeight: 600, color: '#8B9EB0', marginBottom: 20 }}>ENGAGEMENT BY PLATFORM</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {PLATFORMS.slice(0, 5).map(p => {
-              const pAnalytics = analytics.filter(a => a.platform === p.id)
-              const totalLikes = pAnalytics.reduce((s, a) => s + a.likes, 0)
-              const maxLikes = 1000
-              return (
-                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 14, flexShrink: 0 }}>{p.icon}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, color: '#8B9EB0', marginBottom: 4, fontFamily: 'JetBrains Mono' }}>{totalLikes.toLocaleString()} likes</div>
-                    <div style={{ height: 4, background: '#1E2A36', borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${Math.min(100, (totalLikes / maxLikes) * 100)}%`, background: p.color, borderRadius: 2, transition: 'width 1s ease' }} />
+            {(() => {
+              const perPlatform = PLATFORMS.map(p => ({
+                p,
+                likes: analytics.filter(a => a.platform === p.id).reduce((s, a) => s + (a.likes || 0), 0),
+              }))
+              const peak = Math.max(1, ...perPlatform.map(x => x.likes))
+              return perPlatform
+                .sort((a, b) => b.likes - a.likes)
+                .slice(0, 5)
+                .map(({ p, likes }) => (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>{p.icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 11, color: '#8B9EB0', marginBottom: 4, fontFamily: 'JetBrains Mono' }}>
+                        {likes > 0 ? `${likes.toLocaleString()} likes` : 'No data yet'}
+                      </div>
+                      <div style={{ height: 4, background: '#1E2A36', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${(likes / peak) * 100}%`, background: p.color, borderRadius: 2, transition: 'width 1s ease' }} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
+                ))
+            })()}
           </div>
         </div>
       </div>
 
-      {/* AI Insights */}
-      <div className="card" style={{ marginBottom: 28, background: 'linear-gradient(135deg, rgba(0,229,160,0.04), rgba(0,180,216,0.02))' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <TrendingUp size={16} color="#00E5A0" />
-          <h3 style={{ fontFamily: 'Syne', fontSize: 14, fontWeight: 600, color: '#00E5A0', margin: 0 }}>AI INSIGHTS</h3>
-        </div>
-        {analytics.length === 0 ? (
-          <div style={{ padding: '24px 0', textAlign: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-              <Lightbulb size={18} color="#4A5E70" />
-              <span style={{ fontSize: 14, color: '#4A5E70', fontFamily: 'DM Sans' }}>
-                Connect platforms and start posting to unlock AI-powered insights.
-              </span>
+      {/* Insights derived from this user's real data */}
+      {(() => {
+        const insights = buildInsights(analytics, pieces)
+        return (
+          <div className="card" style={{ marginBottom: 28, background: 'linear-gradient(135deg, rgba(0,229,160,0.04), rgba(0,180,216,0.02))' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <TrendingUp size={16} color="#00E5A0" />
+              <h3 style={{ fontFamily: 'Syne', fontSize: 14, fontWeight: 600, color: '#00E5A0', margin: 0 }}>INSIGHTS</h3>
             </div>
-            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center', gap: 8 }}>
-              <a href="/settings" style={{ color: '#00E5A0', fontSize: 13, fontFamily: 'DM Sans', display: 'flex', alignItems: 'center', gap: 4 }}>
-                Manage connections <ExternalLink size={12} />
-              </a>
-            </div>
+            {insights.length === 0 ? (
+              <div style={{ fontSize: 13, color: '#7A8FA0', lineHeight: 1.6 }}>
+                Insights appear once you have posted content with analytics from at least 2 platforms.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                {insights.map((insight, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 10, padding: '10px 12px', background: '#161C24', borderRadius: 8 }}>
+                    <span style={{ color: '#00E5A0', fontSize: 16, flexShrink: 0 }}>💡</span>
+                    <span style={{ fontSize: 13, color: '#8B9EB0', lineHeight: 1.5 }}>{insight}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        ) : (() => {
-          const totalEngagements = totals.likes + totals.shares + totals.saves
-          const engagementRate = totals.views > 0 ? ((totalEngagements / totals.views) * 100).toFixed(1) : '0.0'
-          const topPlatform = (() => {
-            const byPlatform = new Map<string, number>()
-            analytics.forEach(a => byPlatform.set(a.platform, (byPlatform.get(a.platform) || 0) + a.likes))
-            let best = { platform: '—', likes: 0 }
-            byPlatform.forEach((likes, platform) => { if (likes > best.likes) best = { platform, likes } })
-            return best
-          })()
-          const PLATFORM_NAMES: Record<string, string> = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube', twitter: 'X/Twitter', linkedin: 'LinkedIn', facebook: 'Facebook', pinterest: 'Pinterest', snapchat: 'Snapchat' }
-          const estimatedValue = (totals.views * 0.002).toFixed(2)
-          const insights = [
-            <span key="rev">Based on average CPM, your automated content has generated an estimated <strong style={{ color: '#00E5A0' }}>${estimatedValue}</strong> in media value.</span>,
-            engagementRate !== '0.0' ? <span key="er">Your overall engagement rate is <strong style={{ color: '#F0F4F8' }}>{engagementRate}%</strong>.{Number(engagementRate) > 5 ? ' This is above industry average — keep it up!' : ' Try increasing hook strength and CTA clarity.'}</span> : null,
-            topPlatform.likes > 0 ? <span key="tp"><strong style={{ color: '#F0F4F8' }}>{PLATFORM_NAMES[topPlatform.platform] || topPlatform.platform}</strong> drives the most engagement with <strong style={{ color: '#F0F4F8' }}>{topPlatform.likes.toLocaleString()}</strong> total likes.</span> : null,
-            pieces.length > 0 ? <span key="pc">You&apos;ve posted <strong style={{ color: '#F0F4F8' }}>{pieces.length}</strong> pieces of content. {pieces.length < 5 ? 'Consistency is key — aim for daily posting.' : 'Great cadence! Consider experimenting with new formats.'}</span> : null,
-          ].filter(Boolean)
-          return insights.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-              {insights.map((insight, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, padding: '10px 12px', background: '#161C24', borderRadius: 8 }}>
-                  <span style={{ color: '#00E5A0', fontSize: 16, flexShrink: 0 }}><Lightbulb size={16} /></span>
-                  <span style={{ fontSize: 13, color: '#8B9EB0', lineHeight: 1.5 }}>{insight}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ padding: '24px 0', textAlign: 'center' }}>
-              <span style={{ fontSize: 14, color: '#4A5E70', fontFamily: 'DM Sans' }}>
-                Not enough data yet. Keep posting to generate insights.
-              </span>
-            </div>
-          )
-        })()}
-      </div>
+        )
+      })()}
 
       {/* Top posts table */}
       <div className="card">

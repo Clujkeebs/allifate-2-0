@@ -137,9 +137,7 @@ async function generateWithOpenAI(
 
 async function generateWithStability(
   prompt: string,
-  apiKey: string,
-  _width: number,
-  _height: number
+  apiKey: string
 ): Promise<{ imageBytes: Uint8Array; mimeType: string }> {
   const formData = new FormData()
   formData.append('prompt', prompt)
@@ -305,7 +303,7 @@ serve(async (req) => {
           storageUrl = await uploadUrlToStorage(supabase, imageUrl, job.user_id, i)
           break
         case 'stability': {
-          const { imageBytes, mimeType } = await generateWithStability(prompt, apiKey, w, h)
+          const { imageBytes, mimeType } = await generateWithStability(prompt, apiKey)
           storageUrl = await uploadBytesToStorage(supabase, imageBytes, mimeType, job.user_id, i)
           imageUrl = storageUrl // Stability returns bytes, so the URL is the storage URL
           break

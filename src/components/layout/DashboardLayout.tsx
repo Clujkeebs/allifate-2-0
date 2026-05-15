@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import {
   LayoutDashboard, Sparkles, Calendar, BarChart3, Library,
-  Settings, Bell, Plus, Zap, ChevronLeft, ChevronRight, LogOut
+  Settings, Bell, Plus, Zap, ChevronLeft, ChevronRight, LogOut, Menu, X
 } from 'lucide-react'
 import { Logo } from '@/components/ui/Logo'
 import { useAuthStore } from '@/store/auth'
@@ -36,6 +36,10 @@ export function DashboardLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  // Auto-close the mobile drawer whenever the route changes; the NavLink click
+  // handler below also closes it directly so this is just belt-and-suspenders.
+  const closeMobileNav = () => setMobileNavOpen(false)
 
   const pageTitle = PAGE_TITLES[location.pathname] || 'Virlo'
   const usagePct = subscription?.posts_limit === -1
@@ -45,19 +49,30 @@ export function DashboardLayout() {
   return (
     <div style={{ display: 'flex', height: '100vh', background: '#060A0E', overflow: 'hidden' }}>
 
+      {/* ── Mobile scrim ── */}
+      {mobileNavOpen && (
+        <div
+          className="sidebar-mobile-scrim"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+
       {/* ── Sidebar ── */}
-      <aside style={{
-        width: sidebarCollapsed ? 60 : 216,
-        flexShrink: 0,
-        background: '#0D1117',
-        borderRight: '1px solid #1A2530',
-        display: 'flex',
-        flexDirection: 'column',
-        transition: 'width 0.22s cubic-bezier(.16,1,.3,1)',
-        overflow: 'hidden',
-        position: 'relative',
-        zIndex: 20,
-      }}>
+      <aside
+        className={mobileNavOpen ? 'app-sidebar mobile-open' : 'app-sidebar'}
+        style={{
+          width: sidebarCollapsed ? 60 : 216,
+          flexShrink: 0,
+          background: '#0D1117',
+          borderRight: '1px solid #1A2530',
+          display: 'flex',
+          flexDirection: 'column',
+          transition: 'width 0.22s cubic-bezier(.16,1,.3,1), transform 0.22s cubic-bezier(.16,1,.3,1)',
+          overflow: 'hidden',
+          position: 'relative',
+          zIndex: 50,
+        }}
+      >
 
         {/* Logo */}
         <div style={{ padding: sidebarCollapsed ? '18px 0' : '18px 16px', borderBottom: '1px solid #1A2530', display: 'flex', alignItems: 'center', justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}>
@@ -75,7 +90,7 @@ export function DashboardLayout() {
         {/* New content button */}
         <div style={{ padding: sidebarCollapsed ? '10px 8px' : '10px 12px' }}>
           <button
-            onClick={() => navigate('/create')}
+            onClick={() => { closeMobileNav(); navigate('/create') }}
             className="btn-primary"
             style={{ width: '100%', padding: sidebarCollapsed ? '9px' : '9px 12px', fontSize: 13, borderRadius: 9, justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}
           >
@@ -88,6 +103,7 @@ export function DashboardLayout() {
         <nav style={{ flex: 1, padding: sidebarCollapsed ? '4px 8px' : '4px 10px', overflow: 'hidden' }}>
           {NAV.map(({ to, icon: Icon, label, end }) => (
             <NavLink key={to} to={to} end={end}
+              onClick={closeMobileNav}
               style={{ textDecoration: 'none', display: 'block' }}
             >
               {({ isActive }) => (
@@ -183,7 +199,20 @@ export function DashboardLayout() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 24px', flexShrink: 0, background: '#0D1117',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              className="mobile-menu-trigger"
+              onClick={() => setMobileNavOpen(v => !v)}
+              aria-label={mobileNavOpen ? 'Close menu' : 'Open menu'}
+              style={{
+                width: 36, height: 36, borderRadius: 9,
+                background: 'transparent', border: '1px solid #1A2530',
+                cursor: 'pointer', color: '#C4D4E0',
+                display: 'none', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {mobileNavOpen ? <X size={16} /> : <Menu size={16} />}
+            </button>
             <span style={{ fontSize: 15, fontFamily: 'Syne', fontWeight: 700, color: '#ECF0F4' }}>{pageTitle}</span>
           </div>
 

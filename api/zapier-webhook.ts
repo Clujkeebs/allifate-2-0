@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import crypto from 'node:crypto'
 
 // ── Configuration ──────────────────────────────────────────────
 const ZAPIER_WEBHOOK_SECRET = process.env.ZAPIER_WEBHOOK_SECRET
@@ -26,7 +27,6 @@ function validateSignature(req: VercelRequest): boolean {
   if (!signature) return false
   // Constant-time comparison (production-grade)
   try {
-    const crypto = require('crypto')
     return crypto.timingSafeEqual(
       Buffer.from(signature),
       Buffer.from(ZAPIER_WEBHOOK_SECRET)

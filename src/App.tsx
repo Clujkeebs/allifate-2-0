@@ -43,14 +43,13 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 function AppInner() {
-  const { user } = useAuth()
-
   return (
     <Routes>
       {/* Public */}
       <Route path="/" element={<Suspense fallback={<div/>}><LandingPage /></Suspense>} />
       <Route path="/auth" element={<Suspense fallback={<div/>}><AuthPage /></Suspense>} />
       <Route path="/auth/signup" element={<Suspense fallback={<div/>}><AuthPage mode="signup" /></Suspense>} />
+      <Route path="/oauth/callback" element={<RequireAuth><Suspense fallback={<div/>}><OAuthCallbackPage /></Suspense></RequireAuth>} />
       <Route path="/privacy" element={<Suspense fallback={<div/>}><PrivacyPage /></Suspense>} />
       <Route path="/terms" element={<Suspense fallback={<div/>}><TermsPage /></Suspense>} />
 
@@ -68,9 +67,6 @@ function AppInner() {
         <Route path="/settings" element={<Suspense fallback={<div/>}><SettingsPage /></Suspense>} />
         <Route path="/upgrade" element={<Suspense fallback={<div/>}><UpgradePage /></Suspense>} />
       </Route>
-
-      {/* OAuth callback */}
-      <Route path="/oauth/callback" element={<RequireAuth><Suspense fallback={<div/>}><OAuthCallbackPage /></Suspense></RequireAuth>} />
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />

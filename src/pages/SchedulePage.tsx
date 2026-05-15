@@ -17,7 +17,7 @@ export function SchedulePage() {
 
   useEffect(() => {
     if (!user) return
-    db.from('scheduled_posts').select('*').eq('user_id', user.id).order('scheduled_for').then(({ data }: { data: any }) => {
+    db.from('scheduled_posts').select('*').eq('user_id', user.id).order('scheduled_for').then(({ data }: { data: ScheduledPost[] | null }) => {
       setPosts(data || [])
       setLoading(false)
     })
