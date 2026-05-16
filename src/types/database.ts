@@ -9,16 +9,23 @@ export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled'
 
 export interface Profile {
   id: string
+  email: string
   full_name: string | null
   avatar_url: string | null
   niche: string | null
   tone_preference: string | null
+  plan: string
   subscription_tier: SubscriptionTier
   credits_remaining: number
-  created_at: string
+  searches_today: number
+  searches_reset_at: string
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
   brand_colors: string[] | null
   brand_logo_url: string | null
   api_key: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface PlatformConnection {
@@ -138,6 +145,77 @@ export interface Subscription {
   posts_limit: number
 }
 
+export interface LinkAnalysis {
+  id: string
+  user_id: string
+  tiktok_url: string
+  product_name: string | null
+  product_image: string | null
+  video_views: number | null
+  engagement_rate: number | null
+  estimated_sales: number | null
+  estimated_revenue: number | null
+  score: number | null
+  verdict: string | null
+  hook_suggestions: string[] | null
+  angle_suggestions: string[] | null
+  created_at: string
+}
+
+export interface Product {
+  id: string
+  name: string
+  category: string
+  description: string | null
+  price: number
+  image_url: string | null
+  tiktok_shop_url: string | null
+  seller_name: string | null
+  niche: string | null
+  tags: string[]
+  total_sales: number
+  total_revenue: number
+  total_videos: number
+  avg_video_views: number
+  growth_rate: number
+  commission_rate: number
+  is_trending: boolean
+  overall_score: number
+  trend_score: number
+  commission_score: number
+  competition_score: number
+  conversion_score: number
+  created_at: string
+  updated_at: string
+}
+
+export interface SavedProduct {
+  id: string
+  user_id: string
+  product_id: string
+  created_at: string
+}
+
+export interface SearchHistory {
+  id: string
+  user_id: string
+  query: string
+  filters: Json
+  results_count: number
+  created_at: string
+}
+
+export interface VideoIdea {
+  id: string
+  product_id: string
+  hook: string
+  angle: string
+  content_type: string
+  script_outline: string | null
+  estimated_virality: number | null
+  created_at: string
+}
+
 // Supabase database type definition
 export interface Database {
   public: {
@@ -146,24 +224,36 @@ export interface Database {
         Row: Profile
         Insert: {
           id: string
+          email: string
           full_name?: string | null
           avatar_url?: string | null
           niche?: string | null
           tone_preference?: string | null
+          plan?: string
           subscription_tier?: SubscriptionTier
           credits_remaining?: number
+          searches_today?: number
+          searches_reset_at?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           brand_colors?: string[] | null
           brand_logo_url?: string | null
           api_key?: string | null
         }
         Update: {
           id?: string
+          email?: string
           full_name?: string | null
           avatar_url?: string | null
           niche?: string | null
           tone_preference?: string | null
+          plan?: string
           subscription_tier?: SubscriptionTier
           credits_remaining?: number
+          searches_today?: number
+          searches_reset_at?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           brand_colors?: string[] | null
           brand_logo_url?: string | null
           api_key?: string | null
@@ -211,12 +301,12 @@ export interface Database {
           music_mood?: string | null
           video_length?: number | null
           caption_style?: string | null
-          error_message?: string | null
-          completed_at?: string | null
           image_style?: string | null
           image_aspect_ratio?: string | null
           voice_id?: string | null
           niche?: string | null
+          error_message?: string | null
+          completed_at?: string | null
         }
         Update: {
           status?: JobStatus
@@ -363,6 +453,132 @@ export interface Database {
           current_period_end?: string | null
           posts_used_this_month?: number
           posts_limit?: number
+        }
+      }
+      link_analyses: {
+        Row: LinkAnalysis
+        Insert: {
+          id?: string
+          user_id: string
+          tiktok_url: string
+          product_name?: string | null
+          product_image?: string | null
+          video_views?: number | null
+          engagement_rate?: number | null
+          estimated_sales?: number | null
+          estimated_revenue?: number | null
+          score?: number | null
+          verdict?: string | null
+          hook_suggestions?: string[] | null
+          angle_suggestions?: string[] | null
+        }
+        Update: {
+          product_name?: string | null
+          product_image?: string | null
+          video_views?: number | null
+          engagement_rate?: number | null
+          estimated_sales?: number | null
+          estimated_revenue?: number | null
+          score?: number | null
+          verdict?: string | null
+          hook_suggestions?: string[] | null
+          angle_suggestions?: string[] | null
+        }
+      }
+      products: {
+        Row: Product
+        Insert: {
+          id?: string
+          name: string
+          category: string
+          description?: string | null
+          price?: number
+          image_url?: string | null
+          tiktok_shop_url?: string | null
+          seller_name?: string | null
+          niche?: string | null
+          tags?: string[]
+          total_sales?: number
+          total_revenue?: number
+          total_videos?: number
+          avg_video_views?: number
+          growth_rate?: number
+          commission_rate?: number
+          is_trending?: boolean
+          overall_score?: number
+          trend_score?: number
+          commission_score?: number
+          competition_score?: number
+          conversion_score?: number
+        }
+        Update: {
+          name?: string
+          category?: string
+          description?: string | null
+          price?: number
+          image_url?: string | null
+          tiktok_shop_url?: string | null
+          seller_name?: string | null
+          niche?: string | null
+          tags?: string[]
+          total_sales?: number
+          total_revenue?: number
+          total_videos?: number
+          avg_video_views?: number
+          growth_rate?: number
+          commission_rate?: number
+          is_trending?: boolean
+          overall_score?: number
+          trend_score?: number
+          commission_score?: number
+          competition_score?: number
+          conversion_score?: number
+          updated_at?: string
+        }
+      }
+      saved_products: {
+        Row: SavedProduct
+        Insert: {
+          id?: string
+          user_id: string
+          product_id: string
+        }
+        Update: {
+          product_id?: string
+        }
+      }
+      search_history: {
+        Row: SearchHistory
+        Insert: {
+          id?: string
+          user_id: string
+          query: string
+          filters?: Json
+          results_count?: number
+        }
+        Update: {
+          query?: string
+          filters?: Json
+          results_count?: number
+        }
+      }
+      video_ideas: {
+        Row: VideoIdea
+        Insert: {
+          id?: string
+          product_id: string
+          hook: string
+          angle: string
+          content_type: string
+          script_outline?: string | null
+          estimated_virality?: number | null
+        }
+        Update: {
+          hook?: string
+          angle?: string
+          content_type?: string
+          script_outline?: string | null
+          estimated_virality?: number | null
         }
       }
     }
