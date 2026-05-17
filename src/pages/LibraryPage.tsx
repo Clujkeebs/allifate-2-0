@@ -25,6 +25,7 @@ export function LibraryPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'uploads' | 'generated'>('generated')
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -43,24 +44,32 @@ export function LibraryPage() {
   async function handleUpload(files: FileList | null) {
     if (!files || !user) return
     setUploading(true)
+    setUploadError(null)
+    let hadError = false
     for (const file of Array.from(files)) {
       const ext = file.name.split('.').pop()
       const path = `${user.id}/${Date.now()}.${ext}`
       const { data: uploadData, error } = await supabase.storage.from('user-assets').upload(path, file)
-      if (!error && uploadData) {
-        const { data: urlData } = supabase.storage.from('user-assets').getPublicUrl(path)
-        const type = file.type.startsWith('video') ? 'video' : file.type.startsWith('audio') ? 'audio' : 'image'
-        const { data: asset } = await db.from('user_assets').insert({
-          user_id: user.id,
-          file_url: urlData.publicUrl,
-          file_type: type,
-          name: file.name,
-          tags: [],
-          size_bytes: file.size,
-        }).select().single()
-        if (asset) setAssets(prev => [asset, ...prev])
+      if (error || !uploadData) {
+        hadError = true
+        console.error('upload error:', error)
+        continue
       }
+      // user-assets is a private bucket — use createSignedUrl for reliable display
+      const { data: signedData } = await supabase.storage.from('user-assets').createSignedUrl(path, 60 * 60 * 24 * 365)
+      const fileUrl = signedData?.signedUrl ?? supabase.storage.from('user-assets').getPublicUrl(path).data.publicUrl
+      const type = file.type.startsWith('video') ? 'video' : file.type.startsWith('audio') ? 'audio' : 'image'
+      const { data: asset } = await db.from('user_assets').insert({
+        user_id: user.id,
+        file_url: fileUrl,
+        file_type: type,
+        name: file.name,
+        tags: [],
+        size_bytes: file.size,
+      }).select().single()
+      if (asset) setAssets(prev => [asset, ...prev])
     }
+    if (hadError) setUploadError('One or more files failed to upload. Check your connection and try again.')
     setUploading(false)
   }
 
@@ -94,6 +103,14 @@ export function LibraryPage() {
           <input ref={fileRef} type="file" multiple accept="video/*,image/*,audio/*" style={{ display: 'none' }} onChange={e => handleUpload(e.target.files)} />
         </div>
       </div>
+
+      {/* Upload error banner */}
+      {uploadError && (
+        <div style={{ background: 'rgba(255,71,87,0.1)', border: '1px solid rgba(255,71,87,0.3)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#FF4757', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {uploadError}
+          <button onClick={() => setUploadError(null)} style={{ background: 'none', border: 'none', color: '#FF4757', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 0, marginBottom: 20, background: '#0F1318', border: '1px solid #1E2A36', borderRadius: 8, padding: 4, width: 'fit-content' }}>

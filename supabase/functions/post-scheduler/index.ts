@@ -3,8 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-const SCHEDULER_SECRET = Deno.env.get('SCHEDULER_SECRET') ?? ''
 
+// Module-level client uses auto-injected service role key
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -45,9 +45,15 @@ interface PlatformConnection {
 // ── Main handler ───────────────────────────────────────────────────
 
 serve(async (req: Request) => {
-  // Called by pg_cron every minute. Validate the secret to prevent unauthorized invocations.
+  // Resolve SCHEDULER_SECRET: prefer env var, fall back to app_secrets table
+  let schedulerSecret = Deno.env.get('SCHEDULER_SECRET') ?? ''
+  if (!schedulerSecret) {
+    const { data } = await supabase.from('app_secrets').select('value').eq('key', 'SCHEDULER_SECRET').single()
+    schedulerSecret = data?.value ?? ''
+  }
+
   const secret = req.headers.get('x-scheduler-secret')
-  if (SCHEDULER_SECRET && secret !== SCHEDULER_SECRET) {
+  if (schedulerSecret && secret !== schedulerSecret) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },

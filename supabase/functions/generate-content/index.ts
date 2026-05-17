@@ -27,7 +27,22 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    const anthropic = new Anthropic({ apiKey: Deno.env.get('ANTHROPIC_API_KEY') })
+    // Prefer Supabase secret env var; fall back to app_secrets table (service role bypasses RLS)
+    const getSecret = async (key: string): Promise<string> => {
+      const v = Deno.env.get(key)
+      if (v) return v
+      const { data } = await supabase.from('app_secrets').select('value').eq('key', key).single()
+      return data?.value ?? ''
+    }
+
+    const anthropicKey = await getSecret('ANTHROPIC_API_KEY')
+    if (!anthropicKey) {
+      return new Response(JSON.stringify({ error: 'Anthropic API key not configured' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const anthropic = new Anthropic({ apiKey: anthropicKey })
 
     // Get user profile for context
     const jobRes = await supabase.from('content_jobs').select('*, profiles(*)').eq('id', jobId).single()
