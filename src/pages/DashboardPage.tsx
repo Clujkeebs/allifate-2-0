@@ -47,18 +47,23 @@ export function DashboardPage() {
   useEffect(() => {
     if (!user) return
     async function load() {
-      const [jobsRes, piecesRes, connRes, analyticsRes] = await Promise.all([
-        db.from('content_jobs').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }).limit(10),
-        db.from('content_pieces').select('*').eq('user_id', user!.id).order('posted_at', { ascending: false }).limit(12),
-        db.from('platform_connections').select('*').eq('user_id', user!.id),
-        // RLS filters by user via content_piece_id → content_pieces.user_id
-        db.from('post_analytics').select('*').order('fetched_at', { ascending: false }),
-      ])
-      setJobs(jobsRes.data || [])
-      setPieces(piecesRes.data || [])
-      setConnections(connRes.data || [])
-      setAnalytics(analyticsRes.data || [])
-      setLoading(false)
+      try {
+        const [jobsRes, piecesRes, connRes, analyticsRes] = await Promise.all([
+          db.from('content_jobs').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }).limit(10),
+          db.from('content_pieces').select('*').eq('user_id', user!.id).order('posted_at', { ascending: false }).limit(12),
+          db.from('platform_connections').select('*').eq('user_id', user!.id),
+          // RLS filters by user via content_piece_id → content_pieces.user_id
+          db.from('post_analytics').select('*').order('fetched_at', { ascending: false }),
+        ])
+        setJobs(jobsRes.data || [])
+        setPieces(piecesRes.data || [])
+        setConnections(connRes.data || [])
+        setAnalytics(analyticsRes.data || [])
+      } catch (err) {
+        console.error('Dashboard load error:', err)
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [user])

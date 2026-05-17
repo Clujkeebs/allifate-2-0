@@ -106,6 +106,7 @@ export function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<PostAnalytics[]>([])
   const [pieces, setPieces] = useState<ContentPiece[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -117,6 +118,10 @@ export function AnalyticsPage() {
     ]).then(([analyticsRes, piecesRes]) => {
       setAnalytics(analyticsRes.data || [])
       setPieces(piecesRes.data || [])
+    }).catch(err => {
+      console.error('Analytics load error:', err)
+      setFetchError(true)
+    }).finally(() => {
       setLoading(false)
     })
   }, [user])
@@ -140,6 +145,16 @@ export function AnalyticsPage() {
   )
 
   const chartData = useMemo(() => buildDailySeries(scopedAnalytics), [scopedAnalytics])
+
+  if (fetchError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16 }}>
+        <TrendingUp size={32} color="#FF4757" style={{ opacity: 0.6 }} />
+        <h2 style={{ fontFamily: 'Syne', fontSize: 20, color: '#F0F4F8' }}>Failed to load analytics</h2>
+        <p style={{ color: '#8B9EB0', fontSize: 14 }}>Check your connection and try refreshing the page.</p>
+      </div>
+    )
+  }
 
   return (
     <div style={{ padding: 28, maxWidth: 1200, margin: '0 auto' }}>

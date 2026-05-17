@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Check, ChevronLeft, RefreshCw, Calendar, Play, Edit3, Loader2 } from 'lucide-react'
+import { Check, ChevronLeft, RefreshCw, Calendar, Play, Edit3, Loader2, X, AlertCircle } from 'lucide-react'
 import { supabase, db } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { track, Events } from '@/lib/monitoring'
@@ -82,6 +82,8 @@ export function ReviewPage() {
   const [approved, setApproved] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [scheduling, setScheduling] = useState(false)
+  const [scheduleError, setScheduleError] = useState<string | null>(null)
+  const [captionSaveError, setCaptionSaveError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!jobId || !user) return
@@ -120,7 +122,12 @@ export function ReviewPage() {
 
   async function saveCaption() {
     if (!selectedPiece) return
-    await db.from('content_pieces').update({ caption }).eq('id', selectedPiece.id)
+    setCaptionSaveError(null)
+    const { error } = await db.from('content_pieces').update({ caption }).eq('id', selectedPiece.id)
+    if (error) {
+      setCaptionSaveError('Failed to save caption. Please try again.')
+      return
+    }
     setPieces(prev => prev.map(p => p.id === selectedPiece.id ? { ...p, caption } : p))
     setSelectedPiece(prev => prev ? { ...prev, caption } : null)
     setEditingCaption(false)
@@ -134,6 +141,7 @@ export function ReviewPage() {
 
   async function scheduleAll() {
     setScheduling(true)
+    setScheduleError(null)
     const approvedPieces = pieces.filter(p => approved.has(p.id))
     if (approvedPieces.length === 0) {
       setScheduling(false)
@@ -149,7 +157,12 @@ export function ReviewPage() {
       scheduled_for: new Date(first.getTime() + i * 30 * 60 * 1000).toISOString(),
       status: 'scheduled' as const,
     }))
-    await db.from('scheduled_posts').insert(rows)
+    const { error } = await db.from('scheduled_posts').insert(rows)
+    if (error) {
+      setScheduleError('Failed to schedule posts. Please try again.')
+      setScheduling(false)
+      return
+    }
 
     track(Events.SCHEDULE_POST, {
       post_count: approvedPieces.length,
@@ -183,6 +196,32 @@ export function ReviewPage() {
     )
   }
 
+  if (job?.status === 'failed') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16 }}>
+        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(255,71,87,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <X size={28} color="#FF4757" />
+        </div>
+        <h2 style={{ fontFamily: 'Syne', fontSize: 20, color: '#F0F4F8' }}>Generation failed</h2>
+        <p style={{ color: '#8B9EB0', fontSize: 14, textAlign: 'center', maxWidth: 400 }}>
+          Something went wrong while generating your content. Please try again with a different prompt.
+        </p>
+        <button onClick={() => navigate('/create')} className="btn-primary">Try again</button>
+      </div>
+    )
+  }
+
+  if (!loading && !job) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16 }}>
+        <AlertCircle size={32} color="#FF4757" />
+        <h2 style={{ fontFamily: 'Syne', fontSize: 20, color: '#F0F4F8' }}>Job not found</h2>
+        <p style={{ color: '#8B9EB0', fontSize: 14 }}>This content job doesn't exist or you don't have access to it.</p>
+        <button onClick={() => navigate('/dashboard')} className="btn-primary">Back to dashboard</button>
+      </div>
+    )
+  }
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
@@ -209,6 +248,15 @@ export function ReviewPage() {
           </button>
         </div>
       </div>
+
+      {/* Schedule error banner */}
+      {scheduleError && (
+        <div style={{ padding: '10px 24px', background: 'rgba(255,71,87,0.1)', borderBottom: '1px solid rgba(255,71,87,0.2)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <AlertCircle size={14} color="#FF4757" />
+          <span style={{ flex: 1, fontSize: 13, color: '#FF4757' }}>{scheduleError}</span>
+          <button onClick={() => setScheduleError(null)} style={{ background: 'none', border: 'none', color: '#FF4757', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+        </div>
+      )}
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* Platform previews sidebar */}
@@ -308,9 +356,14 @@ export function ReviewPage() {
                       <textarea
                         className="input-base"
                         value={caption}
-                        onChange={e => setCaption(e.target.value)}
+                        onChange={e => { setCaption(e.target.value); setCaptionSaveError(null) }}
                         style={{ minHeight: 120, resize: 'vertical', lineHeight: 1.6 }}
                       />
+                      {captionSaveError && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 12, color: '#FF4757' }}>
+                          <AlertCircle size={12} /> {captionSaveError}
+                        </div>
+                      )}
                       <button onClick={saveCaption} className="btn-primary" style={{ marginTop: 8, fontSize: 13 }}>
                         Save caption
                       </button>

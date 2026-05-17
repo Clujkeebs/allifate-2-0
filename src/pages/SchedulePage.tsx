@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Plus, Trash2, Clock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Trash2, Clock, Loader2, AlertCircle } from 'lucide-react'
 import { db } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { PLATFORM_MAP } from '@/constants/platforms'
@@ -14,14 +14,25 @@ export function SchedulePage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
+  const [retryKey, setRetryKey] = useState(0)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [cancelError, setCancelError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
-    db.from('scheduled_posts').select('*').eq('user_id', user.id).order('scheduled_for').then(({ data }: { data: ScheduledPost[] | null }) => {
+    setLoading(true)
+    setFetchError(false)
+    db.from('scheduled_posts').select('*').eq('user_id', user.id).order('scheduled_for').then(({ data, error }: { data: ScheduledPost[] | null; error: unknown }) => {
+      if (error) {
+        setFetchError(true)
+        setLoading(false)
+        return
+      }
       setPosts(data || [])
       setLoading(false)
     })
-  }, [user])
+  }, [user, retryKey])
 
   const monthStart = startOfMonth(currentDate)
   const monthEnd = endOfMonth(currentDate)
@@ -35,14 +46,40 @@ export function SchedulePage() {
   const selectedDayPosts = selectedDay ? postsOnDay(selectedDay) : []
 
   async function cancelPost(id: string) {
-    await db.from('scheduled_posts').update({ status: 'cancelled' }).eq('id', id)
+    setCancelError(null)
+    setCancellingId(id)
+    const { error } = await db.from('scheduled_posts').update({ status: 'cancelled' }).eq('id', id)
+    if (error) {
+      setCancelError('Failed to cancel post. Please try again.')
+      setCancellingId(null)
+      return
+    }
     setPosts(prev => prev.filter(p => p.id !== id))
+    setCancellingId(null)
   }
 
   const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
+  if (fetchError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16 }}>
+        <AlertCircle size={32} color="#FF4757" />
+        <h2 style={{ fontFamily: 'Syne', fontSize: 20, color: '#F0F4F8' }}>Failed to load schedule</h2>
+        <p style={{ color: '#8B9EB0', fontSize: 14 }}>Check your connection and try refreshing the page.</p>
+        <button onClick={() => setRetryKey(k => k + 1)} className="btn-primary">Retry</button>
+      </div>
+    )
+  }
+
   return (
     <div style={{ padding: 28, maxWidth: 1100, margin: '0 auto' }}>
+      {cancelError && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'rgba(255,71,87,0.1)', border: '1px solid rgba(255,71,87,0.2)', borderRadius: 8, marginBottom: 16, fontSize: 13, color: '#FF4757' }}>
+          <AlertCircle size={14} />
+          <span style={{ flex: 1 }}>{cancelError}</span>
+          <button onClick={() => setCancelError(null)} style={{ background: 'none', border: 'none', color: '#FF4757', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontFamily: 'Syne', fontSize: 24, fontWeight: 700, color: '#F0F4F8', marginBottom: 4 }}>Schedule</h1>
@@ -166,8 +203,16 @@ export function SchedulePage() {
                       {post.status.toUpperCase()}
                     </span>
                     {post.status === 'scheduled' && (
-                      <button onClick={() => cancelPost(post.id)} className="btn-ghost" style={{ padding: 4 }}>
-                        <Trash2 size={12} color="#FF4757" />
+                      <button
+                        onClick={() => cancelPost(post.id)}
+                        disabled={cancellingId === post.id}
+                        className="btn-ghost"
+                        style={{ padding: 4, opacity: cancellingId === post.id ? 0.5 : 1 }}
+                      >
+                        {cancellingId === post.id
+                          ? <Loader2 size={12} color="#FF4757" className="animate-spin" />
+                          : <Trash2 size={12} color="#FF4757" />
+                        }
                       </button>
                     )}
                   </div>

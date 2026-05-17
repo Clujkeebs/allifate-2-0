@@ -28,6 +28,7 @@ export function SettingsPage() {
   const [autopilot, setAutopilot] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'profile' | 'platforms' | 'billing' | 'notifications'>('profile')
   const [connectingPlatform, setConnectingPlatform] = useState<Platform | 'all' | null>(null)
   const [billingPortalLoading, setBillingPortalLoading] = useState(false)
@@ -51,8 +52,13 @@ export function SettingsPage() {
   async function saveProfile() {
     if (!user) return
     setSaving(true)
-    await db.from('profiles').upsert({ id: user.id, full_name: name, niche, tone_preference: tone })
+    setSaveError(null)
+    const { error } = await db.from('profiles').upsert({ id: user.id, full_name: name, niche, tone_preference: tone })
     setSaving(false)
+    if (error) {
+      setSaveError('Failed to save profile. Please try again.')
+      return
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -214,6 +220,11 @@ export function SettingsPage() {
                   {TONES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
                 </select>
               </div>
+              {saveError && (
+                <div style={{ fontSize: 12, color: '#FF4757', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <X size={12} /> {saveError}
+                </div>
+              )}
               <button onClick={saveProfile} disabled={saving} className="btn-primary" style={{ alignSelf: 'flex-start', fontSize: 13 }}>
                 {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <Check size={14} /> : null}
                 {saved ? 'Saved!' : 'Save changes'}

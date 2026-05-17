@@ -18,6 +18,7 @@ export function OnboardingPage() {
   const [niche, setNiche] = useState('')
   const [tone, setTone] = useState('')
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   function togglePlatform(id: Platform) {
     setSelectedPlatforms(prev =>
@@ -28,13 +29,18 @@ export function OnboardingPage() {
   async function finishOnboarding() {
     if (!user) return
     setSaving(true)
-    await db.from('profiles').upsert({
+    setSaveError(null)
+    const { error } = await db.from('profiles').upsert({
       id: user.id,
       full_name: name,
       niche,
       tone_preference: tone,
     })
     setSaving(false)
+    if (error) {
+      setSaveError('Failed to save your profile. Please try again.')
+      return
+    }
     navigate('/create')
   }
 
@@ -168,7 +174,10 @@ export function OnboardingPage() {
         )}
 
         {/* Navigation */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 28, paddingTop: 20, borderTop: '1px solid #1E2A36' }}>
+        {saveError && (
+          <div style={{ marginTop: 16, fontSize: 13, color: '#FF4757', textAlign: 'center' }}>{saveError}</div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16, paddingTop: 20, borderTop: '1px solid #1E2A36' }}>
           <button
             onClick={() => setStep(s => s - 1)}
             className="btn-secondary"
