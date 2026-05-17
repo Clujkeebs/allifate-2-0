@@ -218,6 +218,9 @@ export interface VideoIdea {
 
 // Supabase database type definition
 export interface Database {
+  __InternalSupabase: {
+    PostgrestVersion: '14.4'
+  }
   public: {
     Tables: {
       profiles: {
@@ -581,6 +584,16 @@ export interface Database {
           estimated_virality?: number | null
         }
       }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      generate_api_key: { Args: never; Returns: string }
+      increment_posts_used: { Args: { p_user_id: string }; Returns: number }
+    }
+    Enums: {
+      [_ in never]: never
     }
   }
 }
