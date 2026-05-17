@@ -198,8 +198,10 @@ async function uploadBlobToStorage(
   const fileExt = blob.type === 'image/png' ? 'png' : 'jpg'
   const filePath = `${userId}/ai-generated/${Date.now()}_${index}.${fileExt}`
 
+  // Upload to content-output (public bucket) so the URL is directly embeddable
+  // in <img> tags without needing signed URLs or auth headers.
   const { error: uploadError } = await supabase.storage
-    .from('assets')
+    .from('content-output')
     .upload(filePath, blob, {
       contentType: blob.type,
       upsert: true,
@@ -208,7 +210,7 @@ async function uploadBlobToStorage(
   if (uploadError) throw uploadError
 
   const { data: urlData } = supabase.storage
-    .from('assets')
+    .from('content-output')
     .getPublicUrl(filePath)
 
   return urlData.publicUrl
