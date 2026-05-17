@@ -175,7 +175,7 @@ serve(async (req: Request) => {
     })
   }
 
-  let body: { platform?: string; code?: string }
+  let body: { platform?: string; code?: string; redirect_uri?: string }
   try {
     body = await req.json()
   } catch {
@@ -184,15 +184,19 @@ serve(async (req: Request) => {
     })
   }
 
-  const { platform, code } = body
+  const { platform, code, redirect_uri } = body
   if (!platform || !code) {
     return new Response(JSON.stringify({ error: 'Missing platform or code' }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
+  // Use the redirect_uri the client sends (which matches the authorize step).
+  // Fall back to APP_ORIGIN if omitted for backwards compatibility.
+  const callbackUri = redirect_uri ?? `${APP_ORIGIN}/oauth/callback?platform=${platform}&provider=direct`
+
   try {
-    const result = await exchangeCode(platform, code)
+    const result = await exchangeCode(platform, code, callbackUri)
     return new Response(JSON.stringify(result), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
@@ -205,24 +209,24 @@ serve(async (req: Request) => {
   }
 })
 
-async function exchangeCode(platform: string, code: string) {
+async function exchangeCode(platform: string, code: string, redirectUri: string) {
   switch (platform) {
     case 'tiktok':
-      return exchangeTikTok(code)
+      return exchangeTikTok(code, redirectUri)
     case 'instagram':
-      return exchangeInstagram(code)
+      return exchangeInstagram(code, redirectUri)
     case 'youtube':
-      return exchangeGoogle(code)
+      return exchangeGoogle(code, redirectUri)
     case 'twitter':
-      return exchangeTwitter(code)
+      return exchangeTwitter(code, redirectUri)
     case 'linkedin':
-      return exchangeLinkedIn(code)
+      return exchangeLinkedIn(code, redirectUri)
     case 'facebook':
-      return exchangeFacebook(code)
+      return exchangeFacebook(code, redirectUri)
     case 'pinterest':
-      return exchangePinterest(code)
+      return exchangePinterest(code, redirectUri)
     case 'snapchat':
-      return exchangeSnapchat(code)
+      return exchangeSnapchat(code, redirectUri)
     default:
       throw new Error(`Unsupported platform: ${platform}`)
   }
@@ -230,7 +234,7 @@ async function exchangeCode(platform: string, code: string) {
 
 // ── Platform-specific OAuth exchange implementations ──────────
 
-async function exchangeTikTok(code: string) {
+async function exchangeTikTok(code: string, redirectUri: string) {
   const clientId = Deno.env.get('TIKTOK_CLIENT_KEY') ?? ''
   const clientSecret = Deno.env.get('TIKTOK_CLIENT_SECRET') ?? ''
   if (!clientId || !clientSecret) throw new Error('TikTok OAuth credentials not configured')
@@ -243,7 +247,7 @@ async function exchangeTikTok(code: string) {
       client_secret: clientSecret,
       code,
       grant_type: 'authorization_code',
-      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=tiktok`,
+      redirect_uri: redirectUri,
     }),
   })
   const data = await resp.json()
@@ -257,12 +261,10 @@ async function exchangeTikTok(code: string) {
   }
 }
 
-async function exchangeInstagram(code: string) {
+async function exchangeInstagram(code: string, redirectUri: string) {
   const appId = Deno.env.get('META_APP_ID') ?? ''
   const appSecret = Deno.env.get('META_APP_SECRET') ?? ''
   if (!appId || !appSecret) throw new Error('Instagram OAuth credentials not configured')
-
-  const redirectUri = `${APP_ORIGIN}/oauth/callback?platform=instagram`
 
   // Step 1: Exchange code for short-lived access token
   const tokenResp = await fetch('https://api.instagram.com/oauth/access_token', {
@@ -301,7 +303,7 @@ async function exchangeInstagram(code: string) {
   }
 }
 
-async function exchangeGoogle(code: string) {
+async function exchangeGoogle(code: string, redirectUri: string) {
   const clientId = Deno.env.get('GOOGLE_CLIENT_ID') ?? ''
   const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET') ?? ''
   if (!clientId || !clientSecret) throw new Error('Google OAuth credentials not configured')
@@ -314,7 +316,7 @@ async function exchangeGoogle(code: string) {
       client_secret: clientSecret,
       code,
       grant_type: 'authorization_code',
-      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=youtube`,
+      redirect_uri: redirectUri,
     }),
   })
   const data = await resp.json()
@@ -344,7 +346,7 @@ async function exchangeGoogle(code: string) {
   }
 }
 
-async function exchangeTwitter(code: string) {
+async function exchangeTwitter(code: string, redirectUri: string) {
   const clientId = Deno.env.get('TWITTER_CLIENT_ID') ?? ''
   const clientSecret = Deno.env.get('TWITTER_CLIENT_SECRET') ?? ''
   if (!clientId || !clientSecret) throw new Error('Twitter OAuth credentials not configured')
@@ -358,7 +360,7 @@ async function exchangeTwitter(code: string) {
     body: new URLSearchParams({
       code,
       grant_type: 'authorization_code',
-      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=twitter`,
+      redirect_uri: redirectUri,
       code_verifier: 'challenge', // Must match the code_challenge sent in the auth request
     }),
   })
@@ -374,7 +376,7 @@ async function exchangeTwitter(code: string) {
   }
 }
 
-async function exchangeLinkedIn(code: string) {
+async function exchangeLinkedIn(code: string, redirectUri: string) {
   const clientId = Deno.env.get('LINKEDIN_CLIENT_ID') ?? ''
   const clientSecret = Deno.env.get('LINKEDIN_CLIENT_SECRET') ?? ''
   if (!clientId || !clientSecret) throw new Error('LinkedIn OAuth credentials not configured')
@@ -387,7 +389,7 @@ async function exchangeLinkedIn(code: string) {
       client_secret: clientSecret,
       code,
       grant_type: 'authorization_code',
-      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=linkedin`,
+      redirect_uri: redirectUri,
     }),
   })
   const data = await resp.json()
@@ -402,7 +404,7 @@ async function exchangeLinkedIn(code: string) {
   }
 }
 
-async function exchangeFacebook(code: string) {
+async function exchangeFacebook(code: string, redirectUri: string) {
   const appId = Deno.env.get('META_APP_ID') ?? ''
   const appSecret = Deno.env.get('META_APP_SECRET') ?? ''
   if (!appId || !appSecret) throw new Error('Facebook OAuth credentials not configured')
@@ -414,7 +416,7 @@ async function exchangeFacebook(code: string) {
       client_id: appId,
       client_secret: appSecret,
       code,
-      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=facebook`,
+      redirect_uri: redirectUri,
     }),
   })
   const data = await resp.json()
@@ -439,7 +441,7 @@ async function exchangeFacebook(code: string) {
   }
 }
 
-async function exchangePinterest(code: string) {
+async function exchangePinterest(code: string, redirectUri: string) {
   const appId = Deno.env.get('PINTEREST_APP_ID') ?? ''
   const appSecret = Deno.env.get('PINTEREST_APP_SECRET') ?? ''
   if (!appId || !appSecret) throw new Error('Pinterest OAuth credentials not configured')
@@ -453,7 +455,7 @@ async function exchangePinterest(code: string) {
     body: new URLSearchParams({
       code,
       grant_type: 'authorization_code',
-      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=pinterest`,
+      redirect_uri: redirectUri,
     }),
   })
   const data = await resp.json()
@@ -468,7 +470,7 @@ async function exchangePinterest(code: string) {
   }
 }
 
-async function exchangeSnapchat(code: string) {
+async function exchangeSnapchat(code: string, redirectUri: string) {
   const clientId = Deno.env.get('SNAPCHAT_CLIENT_ID') ?? ''
   const clientSecret = Deno.env.get('SNAPCHAT_CLIENT_SECRET') ?? ''
   if (!clientId || !clientSecret) throw new Error('Snapchat OAuth credentials not configured')
@@ -481,7 +483,7 @@ async function exchangeSnapchat(code: string) {
       client_secret: clientSecret,
       code,
       grant_type: 'authorization_code',
-      redirect_uri: `${APP_ORIGIN}/oauth/callback?platform=snapchat`,
+      redirect_uri: redirectUri,
     }),
   })
   const data = await resp.json()

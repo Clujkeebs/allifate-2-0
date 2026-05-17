@@ -136,7 +136,13 @@ export function OAuthCallbackPage() {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${(await db.auth.getSession()).data.session?.access_token}`,
             },
-            body: JSON.stringify({ platform: platformParam, code }),
+            body: JSON.stringify({
+              platform: platformParam,
+              code,
+              // Send the exact redirect_uri used in the authorize step so the
+              // edge function can construct a matching value for the token exchange.
+              redirect_uri: `${window.location.origin}/oauth/callback?platform=${platformParam}&provider=direct`,
+            }),
           }
         )
 
