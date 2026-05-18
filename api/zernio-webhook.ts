@@ -22,8 +22,10 @@ const SUPABASE_URL = process.env.SUPABASE_URL || ''
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
 // Singleton Supabase admin client
-let supabaseAdmin: ReturnType<typeof createClient> | null = null
-function getSupabaseAdmin() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let supabaseAdmin: any = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getSupabaseAdmin(): any {
   if (!supabaseAdmin) {
     supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
   }

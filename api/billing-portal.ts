@@ -20,7 +20,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const stripeKey = process.env.STRIPE_SECRET_KEY
   if (!stripeKey) return res.status(500).json({ error: 'Stripe is not configured' })
-  const stripe = new Stripe(stripeKey, { apiVersion: '2023-10-16' })
+  const stripe = new Stripe(stripeKey, { apiVersion: '2026-04-22.dahlia' })
 
   const supabase = createClient(
     process.env.SUPABASE_URL ?? '',
