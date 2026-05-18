@@ -163,9 +163,11 @@ export function OAuthCallbackPage() {
             account_id: result.account_id || result.user_id || `${platformParam}_${Date.now()}`,
             account_name: result.account_name || result.username || `@${platformParam}_user`,
             account_avatar: result.account_avatar || null,
-            expires_at: result.expires_at || result.expires_in
-              ? new Date(Date.now() + (result.expires_in || 3600) * 1000).toISOString()
-              : null,
+            expires_at: result.expires_at
+              ? result.expires_at
+              : result.expires_in
+                ? new Date(Date.now() + result.expires_in * 1000).toISOString()
+                : null,
             is_active: true,
             provider: 'direct',
           },

@@ -37,6 +37,9 @@ export function LibraryPage() {
     ]).then(([assetsRes, piecesRes]) => {
       setAssets(assetsRes.data || [])
       setPieces(piecesRes.data || [])
+    }).catch(err => {
+      console.error('Library load error:', err)
+    }).finally(() => {
       setLoading(false)
     })
   }, [user])

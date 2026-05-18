@@ -19,10 +19,15 @@ async function updateJobProgress(supabaseClient: { from: (table: string) => { up
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  try {
-    const { jobId, prompt, platforms, tone, musicMood, videoLength } = await req.json()
+  let jobId: string | undefined
+  let supabase: ReturnType<typeof createClient> | undefined
 
-    const supabase = createClient(
+  try {
+    const body = await req.json()
+    jobId = body.jobId
+    const { prompt, platforms, tone, musicMood, videoLength } = body
+
+    supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
@@ -169,6 +174,17 @@ Return a JSON array of these objects. Nothing else — pure JSON only.`
 
   } catch (err) {
     console.error('generate-content error:', err)
+    // Mark the job as failed so it doesn't remain stuck in 'processing'
+    if (jobId && supabase) {
+      try {
+        await supabase.from('content_jobs').update({
+          status: 'failed',
+          error_message: String(err),
+        }).eq('id', jobId)
+      } catch (updateErr) {
+        console.error('Failed to mark job as failed:', updateErr)
+      }
+    }
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
